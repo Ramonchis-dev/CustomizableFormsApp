@@ -1,0 +1,176 @@
+﻿@page "/templates/edit/{TemplateId:guid}"
+@page "/templates/new"
+@using CustomizableFormsApp.Components.Layout
+@layout MainLayout
+@inject TemplateService TemplateService
+@inject NavigationManager Navigation
+
+<PageTitle>@(isNew ? "Create" : "Edit") Template</PageTitle>
+
+<EditForm Model="@template" OnValidSubmit="SaveTemplate">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="templateTitle" class="form-label">Template Title</label>
+        <InputText id="templateTitle" @bind-Value="template.Title" class="form-control" />
+        <ValidationMessage For="@(() => template.Title)" />
+    </div>
+
+    <div class="mb-3">
+        <label for="templateDescription" class="form-label">Description</label>
+        <InputTextArea id="templateDescription" @bind-Value="template.Description"
+                       class="form-control" rows="3" />
+    </div>
+
+    <h3 class="mt-4">Questions</h3>
+
+    @foreach (var question in template.Questions.OrderBy(q => q.OrderIndex))
+    {
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Question @(question.OrderIndex + 1)</span>
+                <button type="button" class="btn btn-sm btn-danger"
+                        @onclick="() => RemoveQuestion(question)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Question editing fields -->
+                <div class="mb-3">
+                    <label class="form-label">Question Text</label>
+                    <InputText @bind-Value="question.Text" class="form-control" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Question Type</label>
+                        <InputSelect @bind-Value="question.Type" class="form-select">
+                            @foreach (var type in Enum.GetValues<QuestionType>())
+                            {
+                                <option value="@type">@type</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check mt-4">
+                            <InputCheckbox @bind-Value="question.IsRequired" class="form-check-input" />
+                            <label class="form-check-label">Required</label>
+                        </div>
+                    </div>
+                </div>
+
+                @if (question.Type == QuestionType.Dropdown || question.Type == QuestionType.MultiSelect)
+                {
+                    <div class="mt-3">
+                        <h5>Options</h5>
+                        @foreach (var option in question.Options)
+                        {
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" @bind="option.Text"
+                                       placeholder="Option text" />
+                                <button class="btn btn-outline-danger" type="button"
+                                        @onclick="() => RemoveOption(question, option)">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        }
+                        <button type="button" class="btn btn-sm btn-primary"
+                                @onclick="() => AddOption(question)">
+                            Add Option
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <button type="button" class="btn btn-primary mb-3" @onclick="AddQuestion">
+        <i class="bi bi-plus-circle"></i> Add Question
+    </button>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Save Template</button>
+        <button type="button" class="btn btn-secondary ms-2" @onclick="Cancel">Cancel</button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public Guid TemplateId { get; set; }
+
+    private Template template = new();
+    private bool isNew = true;
+    private int questionCounter = 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (TemplateId != Guid.Empty)
+        {
+            isNew = false;
+            template = await TemplateService.GetTemplateAsync(TemplateId) ?? new Template();
+        }
+        else
+        {
+            template = new Template { Questions = new List<Question>() };
+        }
+        questionCounter = template.Questions.Count;
+    }
+
+    private void AddQuestion()
+    {
+        template.Questions.Add(new Question
+        {
+            Id = Guid.NewGuid(),
+            OrderIndex = questionCounter++,
+            Options = new List<QuestionOption>()
+        });
+    }
+
+    private void RemoveQuestion(Question question)
+    {
+        template.Questions.Remove(question);
+        // Re-index remaining questions
+        for (int i = 0; i < template.Questions.Count; i++)
+        {
+            template.Questions[i].OrderIndex = i;
+        }
+        questionCounter--;
+    }
+
+    private void AddOption(Question question)
+    {
+        question.Options.Add(new QuestionOption
+        {
+            Id = Guid.NewGuid(),
+            OrderIndex = question.Options.Count
+        });
+    }
+
+    private void RemoveOption(Question question, QuestionOption option)
+    {
+        question.Options.Remove(option);
+        // Re-index remaining options
+        for (int i = 0; i < question.Options.Count; i++)
+        {
+            question.Options[i].OrderIndex = i;
+        }
+    }
+
+    private async Task SaveTemplate()
+    {
+        if (isNew)
+        {
+            await TemplateService.CreateTemplateAsync(template);
+        }
+        else
+        {
+            await TemplateService.UpdateTemplateAsync(template);
+        }
+        Navigation.NavigateTo("/templates");
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/templates");
+    }
+}

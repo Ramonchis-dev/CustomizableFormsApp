@@ -8,6 +8,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Include="Dockerfile" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="bootstrap" Version="5.3.7" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.6" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.6" />
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />

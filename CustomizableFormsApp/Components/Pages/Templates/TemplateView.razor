@@ -1,0 +1,79 @@
+﻿@page "/templates/view/{TemplateId:guid}"
+@using CustomizableFormsApp.Components.Layout
+@layout MainLayout
+@inject TemplateService TemplateService
+@inject NavigationManager Navigation
+
+<PageTitle>View Template</PageTitle>
+
+@if (template == null)
+{
+    <p>Loading template...</p>
+}
+else
+{
+    <div class="card">
+        <div class="card-header">
+            <h2>@template.Title</h2>
+            <p class="text-muted">@template.Description</p>
+        </div>
+        <div class="card-body">
+            <h4>Questions</h4>
+            <ol class="list-group list-group-numbered">
+                @foreach (var question in template.Questions.OrderBy(q => q.OrderIndex))
+                {
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5>@question.Text</h5>
+                                <p class="text-muted">Type: @question.Type</p>
+                                @if (question.IsRequired)
+                                {
+                                    <span class="badge bg-warning text-dark">Required</span>
+                                }
+                            </div>
+                        </div>
+
+                        @if (question.Options.Any())
+                        {
+                            <div class="mt-2">
+                                <h6>Options:</h6>
+                                <ul>
+                                    @foreach (var option in question.Options)
+                                    {
+                                        <li>@option.Text (@option.Value)</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </li>
+                }
+            </ol>
+        </div>
+        <div class="card-footer">
+            <button class="btn btn-primary" @onclick="NavigateToEdit">Edit Template</button>
+            <button class="btn btn-secondary ms-2" @onclick="NavigateToList">Back to List</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid TemplateId { get; set; }
+    private Template? template;
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        template = await TemplateService.GetTemplateAsync(TemplateId);
+    }
+
+    private void NavigateToEdit()
+    {
+        Navigation.NavigateTo($"/templates/edit/{TemplateId}");
+    }
+
+    private void NavigateToList()
+    {
+        Navigation.NavigateTo("/templates");
+    }
+}

@@ -1,0 +1,76 @@
+﻿@page "/admin/users"
+@using CustomizableFormsApp.Components.Layout
+@using CustomizableFormsApp.Services.AuthService
+@layout MainLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject AuthService AuthService
+
+<PageTitle>User Management</PageTitle>
+
+<h2>User Management</h2>
+
+@if (users == null)
+{
+    <p>Loading users...</p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Roles</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.Email</td>
+                    <td>@string.Join(", ", user.Roles)</td>
+                    <td>
+                        @if (user.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Inactive</span>
+                        }
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => EditUser(user.Id)">
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<UserDto> users = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = await AuthService.GetAllUsersAsync();
+    }
+
+    private void EditUser(string userId)
+    {
+    {
+        // Navigation to user edit page would go here
+    }
+
+    public class UserDto
+    {
+        public string Id { get; set; }
+        public string Email { get; set; }
+        public List<string> Roles { get; set; } = new();
+        public bool IsActive { get; set; }
+    }
+}

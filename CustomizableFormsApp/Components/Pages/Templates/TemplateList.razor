@@ -1,0 +1,84 @@
+﻿@page "/templates"
+@using CustomizableFormsApp.Components.Layout
+@layout MainLayout
+@inject TemplateService TemplateService
+@inject NavigationManager Navigation
+
+<PageTitle>Templates</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Form Templates</h2>
+    <button class="btn btn-primary" @onclick="CreateNewTemplate">
+        <i class="bi bi-plus-circle"></i> New Template
+    </button>
+</div>
+
+@if (templates == null)
+{
+    <p>Loading templates...</p>
+}
+else if (!templates.Any())
+{
+    <div class="alert alert-info">
+        No templates found. Create your first template!
+    </div>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Questions</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var template in templates)
+            {
+                <tr>
+                    <td>@template.Title</td>
+                    <td>@template.Questions.Count</td>
+                    <td>@template.CreatedAt.ToString("d")</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => EditTemplate(template.Id)">
+                            Edit
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger ms-2"
+                                @onclick="() => DeleteTemplate(template.Id)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Template> templates = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        templates = await TemplateService.GetTemplatesAsync();
+    }
+
+    private void CreateNewTemplate()
+    {
+        Navigation.NavigateTo("/templates/new");
+    }
+
+    private void EditTemplate(Guid templateId)
+    {
+        Navigation.NavigateTo($"/templates/edit/{templateId}");
+    }
+
+    private async Task DeleteTemplate(Guid templateId)
+    {
+        await TemplateService.DeleteTemplateAsync(templateId);
+        templates = await TemplateService.GetTemplatesAsync();
+        StateHasChanged();
+    }
+}

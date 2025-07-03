@@ -1,0 +1,41 @@
+﻿@page "/login"
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText @bind-Value="loginModel.Email" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <InputText type="password" @bind-Value="loginModel.Password" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Login</button>
+    <button type="button" class="btn btn-link" @onclick="NavigateToRegister">Register</button>
+</EditForm>
+
+@code {
+    private LoginModel loginModel = new();
+
+    private async Task HandleLogin()
+    {
+        // Authentication logic
+        var result = await ((CustomAuthStateProvider)AuthStateProvider).Login(loginModel);
+
+        if (result.Succeeded)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private void NavigateToRegister() => Navigation.NavigateTo("/register");
+
+    private class LoginModel
+    {
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+}

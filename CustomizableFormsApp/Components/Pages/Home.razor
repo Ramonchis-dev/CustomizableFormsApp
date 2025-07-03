@@ -1,0 +1,23 @@
+﻿@page "/"
+@using CustomizableFormsApp.Components.Layout
+@layout MainLayout
+
+<PageTitle>Home</PageTitle>
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to Custom Forms</h1>
+    <p>Create and manage customizable forms with ease.</p>
+
+    <div class="mt-5">
+        <a href="/templates" class="btn btn-primary btn-lg mx-2">
+            <i class="bi bi-file-earmark-text"></i> View Templates
+        </a>
+        <a href="/forms" class="btn btn-success btn-lg mx-2">
+            <i class="bi bi-pencil-square"></i> Submit a Form
+        </a>
+    </div>
+</div>
+
+@code {
+    // No backend logic needed for this page
+}

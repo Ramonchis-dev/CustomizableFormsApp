@@ -1,20 +1,21 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/" />
-    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
-    <link rel="stylesheet" href="app.css" />
-    <link rel="stylesheet" href="CustomizableFormsApp.styles.css" />
-    <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet />
-</head>
-
-<body>
-    <Routes />
-    <script src="_framework/blazor.web.js"></script>
-</body>
-
-</html>
+﻿@using CustomizableFormsApp.Components.Layout
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <p>You are not authorized to access this resource.</p>
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="loading">Loading...</div>
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p>Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
