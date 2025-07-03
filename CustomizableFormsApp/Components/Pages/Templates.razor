@@ -1,0 +1,81 @@
+﻿@page "/templates"
+@inject TemplateService TemplateService
+@inject NavigationManager Navigation
+
+<PageTitle>Templates</PageTitle>
+
+<h1>Form Templates</h1>
+
+<button class="btn btn-primary mb-3" @onclick="AddTemplate">
+    <i class="bi bi-plus-circle"></i> New Template
+</button>
+
+@if (templates == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var template in templates)
+            {
+                <tr @oncontextmenu:preventDefault 
+                    @oncontextmenu="@(e => ShowContextMenu(e, template.Id)">
+                    <td>@template.Title</td>
+                    <td>@template.Description</td>
+                    <td>@template.CreatedAt.ToString("d")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (showContextMenu)
+{
+    <div class="context-menu shadow" style="position:absolute; left:@contextMenuX; top:@contextMenuY">
+        <button class="dropdown-item" @onclick="EditTemplate">
+            <i class="bi bi-pencil"></i> Edit
+        </button>
+        <button class="dropdown-item text-danger" @onclick="DeleteTemplate">
+            <i class="bi bi-trash"></i> Delete
+        </button>
+    </div>
+}
+
+@code {
+    private List<Template> templates = new();
+    private bool showContextMenu;
+    private Guid selectedTemplateId;
+    private double contextMenuX, contextMenuY;
+    
+    protected override async Task OnInitializedAsync() 
+        => templates = await TemplateService.GetTemplatesAsync();
+    
+    private void AddTemplate() 
+        => Navigation.NavigateTo("/templates/new");
+    
+    private void ShowContextMenu(MouseEventArgs e, Guid templateId)
+    {
+        selectedTemplateId = templateId;
+        showContextMenu = true;
+        contextMenuX = e.ClientX;
+        contextMenuY = e.ClientY;
+    }
+    
+    private void EditTemplate() 
+        => Navigation.NavigateTo($"/templates/edit/{selectedTemplateId}");
+    
+    private async Task DeleteTemplate()
+    {
+        // Implement delete logic
+        showContextMenu = false;
+    }
+}

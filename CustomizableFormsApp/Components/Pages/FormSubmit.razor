@@ -1,0 +1,108 @@
+﻿@page "/form/{TemplateId:guid}"
+@inject TemplateService TemplateService
+@inject FormSubmissionService SubmissionService
+
+@if (template == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h2>@template.Title</h2>
+    <p>@template.Description</p>
+
+    <EditForm Model="@submission" OnValidSubmit="SubmitForm">
+        @foreach (var question in template.Questions.OrderBy(q => q.OrderIndex))
+        {
+            <div class="mb-4">
+                <label class="form-label">@question.Text</label>
+                @if (question.IsRequired)
+                {
+                    <span class="text-danger">*</span>
+                }
+
+                @switch (question.Type)
+                {
+                    case QuestionType.Text:
+                        <InputText class="form-control" @bind-Value="GetAnswer(question).TextValue" />
+                        break;
+                    case QuestionType.Number:
+                        <InputNumber class="form-control" @bind-Value="GetAnswer(question).NumberValue" />
+                        break;
+                    case QuestionType.Date:
+                        <InputDate class="form-control" @bind-Value="GetAnswer(question).DateValue" />
+                        break;
+                    case QuestionType.Dropdown:
+                        <InputSelect class="form-select" @bind-Value="GetAnswer(question).SelectedOption">
+                            <option value="">-- Select --</option>
+                            @foreach (var option in question.Options)
+                            {
+                                <option value="@option.Value">@option.Text</option>
+                            }
+                        </InputSelect>
+                        break;
+                    case QuestionType.MultiSelect:
+                        <div>
+                            @foreach (var option in question.Options)
+                            {
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input"
+                                           @bind="GetAnswer(question).SelectedOptions[option.Value]" />
+                                    <label class="form-check-label">@option.Text</label>
+                                </div>
+                            }
+                        </div>
+                        break;
+                    case QuestionType.Paragraph:
+                        <InputTextArea class="form-control" @bind-Value="GetAnswer(question).TextValue" />
+                        break;
+                }
+            </div>
+        }
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid TemplateId { get; set; }
+
+    private Template? template;
+    private FormSubmission submission = new();
+    private Dictionary<Guid, Answer> answers = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        template = await TemplateService.GetTemplateAsync(TemplateId);
+        if (template != null)
+        {
+            submission.TemplateId = template.Id;
+            submission.SubmittedAt = DateTime.UtcNow;
+        }
+    }
+
+    private Answer GetAnswer(Question question)
+    {
+        if (!answers.ContainsKey(question.Id))
+        {
+            answers[question.Id] = new Answer
+            {
+                QuestionId = question.Id,
+                SelectedOptions = new Dictionary<string, bool>()
+            };
+        }
+        return answers[question.Id];
+    }
+
+    private async Task SubmitForm()
+    {
+        // Convert answers to JSON
+        submission.AnswersJson = JsonSerializer.Serialize(answers.Values);
+
+        // Save submission
+        await SubmissionService.CreateSubmissionAsync(submission);
+
+        // Redirect to thank you page
+        Navigation.NavigateTo("/submission-thank-you");
+    }
+}
