@@ -1,33 +1,29 @@
-using CustomizableFormsApp.Authorization; // Added for Operations and TemplateOwnerHandler
 using CustomizableFormsApp.Components;
 using CustomizableFormsApp.Data;
 using CustomizableFormsApp.Models;
 using CustomizableFormsApp.Services;
-using Microsoft.AspNetCore.Authorization; // Added for IAuthorizationService
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using CustomizableFormsApp.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
-
+using CustomizableFormsApp.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
-    .AddInteractiveWebAssemblyComponents(); // Keep this if you intend to use WASM later
+    .AddInteractiveWebAssemblyComponents();
 
 // Configure AuthenticationStateProvider
 builder.Services.AddCascadingAuthenticationState();
-// If you have a custom AuthStateProvider, register it here. Otherwise, use default.
-// builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>(); // Uncomment if you have this custom class
-builder.Services.AddAuthorizationCore(); // Add authorization services
+builder.Services.AddAuthorizationCore();
 
-var connectionString = builder.Configuration.GetValue<string>("DATABASE_URL")
-                       ?? builder.Configuration.GetConnectionString("DefaultConnection")
-                       ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+// NEW: Use your extension method to add database services
+builder.Services.AddDatabaseServices(builder.Configuration);
+
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -37,14 +33,11 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
     options.AddPolicy("UserPolicy", policy => policy.RequireRole("User"));
-    // Add policy for TemplateOwnerHandler
     options.AddPolicy("TemplateOwner", policy =>
-        policy.Requirements.Add(new OperationAuthorizationRequirement { Name = "Update" })); // Example for Update operation
+        policy.Requirements.Add(new OperationAuthorizationRequirement { Name = "Update" }));
 });
 
-// Register custom authorization handlers
 builder.Services.AddSingleton<IAuthorizationHandler, TemplateOwnerHandler>();
-
 
 // Register your custom services
 builder.Services.AddScoped<TemplateService>();
@@ -72,8 +65,6 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode();
-// If you do NOT have a CustomizableFormsApp.Client project, ensure this line is commented out:
-// .AddAdditionalAssemblies(typeof(CustomizableFormsApp.Client._Imports).Assembly);
 
 // Apply migrations and seed initial data on startup
 using (var scope = app.Services.CreateScope())
