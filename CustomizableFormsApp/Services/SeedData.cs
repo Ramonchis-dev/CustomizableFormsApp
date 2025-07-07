@@ -1,44 +1,55 @@
-﻿using CustomizableFormsApp.Data;
-using CustomizableFormsApp.Models;
+﻿using CustomizableFormsApp.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
-namespace CustomizableFormsApp.Services;
-
-public static class SeedData
+namespace CustomizableFormsApp.Data
 {
-    public static async Task Initialize(IServiceProvider serviceProvider)
+    public static class SeedData // It's a static class, so it won't be registered as a service
     {
-        using var scope = serviceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<CustomizableFormsAppDbContext>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-
-        await context.Database.MigrateAsync();
-
-        // Create roles
-        var roles = new[] { "Admin", "User" };
-        foreach (var role in roles)
+        public static async Task Initialize(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole> roleManager)
         {
-            if (!await roleManager.RoleExistsAsync(role))
+            // Ensure database is migrated
+            await context.Database.MigrateAsync();
+
+            // Seed Roles
+            string[] roleNames = { "Admin", "User" };
+            foreach (var roleName in roleNames)
             {
-                await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+                if (!await roleManager.RoleExistsAsync(roleName))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(roleName));
+                }
             }
-        }
 
-        // Create admin user
-        if (await userManager.FindByEmailAsync("admin@example.com") == null)
-        {
-            var admin = new ApplicationUser
-            {
-                UserName = "admin@example.com",
-                Email = "admin@example.com"
-            };
+            // Seed Admin User
+            var adminEmail = "admin@example.com";
+            var adminUser = await userManager.FindByEmailAsync(adminEmail);
 
-            var result = await userManager.CreateAsync(admin, "Admin123!");
-            if (result.Succeeded)
+            if (adminUser == null)
             {
-                await userManager.AddToRoleAsync(admin, "Admin");
+                adminUser = new ApplicationUser
+                {
+                    UserName = adminEmail,
+                    Email = adminEmail,
+                    EmailConfirmed = true,
+                    FirstName = "System",
+                    LastName = "Admin"
+                };
+                var result = await userManager.CreateAsync(adminUser, "AdminPassword123!");
+
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(adminUser, "Admin");
+                }
+                else
+                {
+                    // Log errors if admin user creation fails
+                    Console.WriteLine($"Error creating admin user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                }
             }
         }
     }

@@ -1,85 +1,141 @@
-﻿// Services/TemplateService.cs
+﻿using CustomizableFormsApp.Data;
 using CustomizableFormsApp.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-public async Task CreateTemplateAsync(Template template)
+namespace CustomizableFormsApp.Services
 {
-    _context.Templates.Add(template);
-    await _context.SaveChangesAsync();
-}
-
-public async Task UpdateTemplateAsync(Template template)
-{
-    var existing = await _context.Templates
-        .Include(t => t.Questions)
-        .ThenInclude(q => q.Options)
-        .FirstOrDefaultAsync(t => t.Id == template.Id);
-
-    if (existing == null) return;
-
-    // Update template properties
-    existing.Title = template.Title;
-    existing.Description = template.Description;
-    existing.UpdatedAt = DateTime.UtcNow;
-
-    // Update questions
-    foreach (var question in template.Questions)
+    public class TemplateService
     {
-        var existingQuestion = existing.Questions
-            .FirstOrDefault(q => q.Id == question.Id);
+        private readonly ApplicationDbContext _context;
 
-        if (existingQuestion == null)
+        public TemplateService(ApplicationDbContext context)
         {
-            existing.Questions.Add(question);
+            _context = context;
         }
-        else
+
+        public async Task<List<Template>> GetTemplatesAsync()
         {
-            // Update question properties
-            existingQuestion.Text = question.Text;
-            existingQuestion.Description = question.Description;
-            existingQuestion.Type = question.Type;
-            existingQuestion.OrderIndex = question.OrderIndex;
-            existingQuestion.IsRequired = question.IsRequired;
+            return await _context.Templates
+                .Include(t => t.Author) // Include author details
+                .OrderByDescending(t => t.CreatedAt) // Order by creation date
+                .ToListAsync();
+        }
 
-            // Update options
-            foreach (var option in question.Options)
+        public async Task<Template?> GetTemplateByIdAsync(Guid templateId)
+        {
+            return await _context.Templates
+                .Include(t => t.Questions)
+                    .ThenInclude(q => q.Options)
+                .FirstOrDefaultAsync(t => t.TemplateId == templateId);
+        }
+
+        public async Task CreateTemplateAsync(Template template)
+        {
+            template.CreatedAt = DateTime.UtcNow;
+            template.UpdatedAt = DateTime.UtcNow;
+            _context.Templates.Add(template);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateTemplateAsync(Template template)
+        {
+            var existing = await _context.Templates
+                .Include(t => t.Questions)
+                .ThenInclude(q => q.Options)
+                .FirstOrDefaultAsync(t => t.TemplateId == template.TemplateId);
+
+            if (existing == null) return;
+
+            existing.Title = template.Title;
+            existing.Description = template.Description;
+            existing.UpdatedAt = DateTime.UtcNow;
+
+            // Handle questions (add, update, remove)
+            var questionsToRemove = existing.Questions
+                .Where(q => !template.Questions.Any(tq => tq.Id == q.Id))
+                .ToList();
+            foreach (var question in questionsToRemove)
             {
-                var existingOption = existingQuestion.Options
-                    .FirstOrDefault(o => o.Id == option.Id);
+                _context.Questions.Remove(question);
+            }
 
-                if (existingOption == null)
+            foreach (var question in template.Questions)
+            {
+                var existingQuestion = existing.Questions
+                    .FirstOrDefault(q => q.Id == question.Id);
+
+                if (existingQuestion == null)
                 {
-                    existingQuestion.Options.Add(option);
+                    // Add new question
+                    question.TemplateId = existing.TemplateId; // Ensure FK is set
+                    existing.Questions.Add(question);
                 }
                 else
                 {
-                    existingOption.Text = option.Text;
-                    existingOption.Value = option.Value;
-                    existingOption.OrderIndex = option.OrderIndex;
+                    // Update existing question properties
+                    existingQuestion.Text = question.Text;
+                    existingQuestion.Description = question.Description;
+                    existingQuestion.Type = question.Type;
+                    existingQuestion.OrderIndex = question.OrderIndex;
+                    existingQuestion.IsRequired = question.IsRequired;
+                    existingQuestion.ValidationRules = question.ValidationRules;
+
+                    // Handle options for this question (add, update, remove)
+                    var optionsToRemove = existingQuestion.Options
+                        .Where(o => !question.Options.Any(qo => qo.Id == o.Id))
+                        .ToList();
+                    foreach (var option in optionsToRemove)
+                    {
+                        _context.QuestionOptions.Remove(option);
+                    }
+
+                    foreach (var option in question.Options)
+                    {
+                        var existingOption = existingQuestion.Options
+                            .FirstOrDefault(o => o.Id == option.Id);
+
+                        if (existingOption == null)
+                        {
+                            // Add new option
+                            option.QuestionId = existingQuestion.Id; // Ensure FK is set
+                            existingQuestion.Options.Add(option);
+                        }
+                        else
+                        {
+                            // Update existing option properties
+                            existingOption.Text = option.Text;
+                            existingOption.Value = option.Value;
+                            existingOption.OrderIndex = option.OrderIndex;
+                        }
+                    }
                 }
             }
 
-            // Remove deleted options
-            var optionsToRemove = existingQuestion.Options
-                .Where(o => !question.Options.Any(qo => qo.Id == o.Id))
-                .ToList();
+            await _context.SaveChangesAsync();
+        }
 
-            foreach (var option in optionsToRemove)
+        public async Task DeleteTemplateAsync(Guid templateId)
+        {
+            var template = await _context.Templates.FindAsync(templateId);
+            if (template != null)
             {
-                existingQuestion.Options.Remove(option);
+                _context.Templates.Remove(template);
+                await _context.SaveChangesAsync();
             }
         }
+
+        public async Task<object> GetTemplateAnalyticsAsync(Guid templateId)
+        {
+            // Implement logic to analyze submissions for a given template
+            // This would involve querying FormSubmissions and parsing AnswersJson
+            // For now, return a dummy object
+            var submissionsCount = await _context.FormSubmissions
+                                                .Where(fs => fs.TemplateId == templateId)
+                                                .CountAsync();
+            return new { TemplateId = templateId, TotalSubmissions = submissionsCount, Message = "Analytics feature coming soon!" };
+        }
     }
-
-    // Remove deleted questions
-    var questionsToRemove = existing.Questions
-        .Where(q => !template.Questions.Any(tq => tq.Id == q.Id))
-        .ToList();
-
-    foreach (var question in questionsToRemove)
-    {
-        existing.Questions.Remove(question);
-    }
-
-    await _context.SaveChangesAsync();
 }

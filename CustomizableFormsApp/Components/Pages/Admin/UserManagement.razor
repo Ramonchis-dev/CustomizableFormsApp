@@ -1,13 +1,13 @@
 ﻿@page "/admin/users"
 @using CustomizableFormsApp.Components.Layout
-@using CustomizableFormsApp.Services.AuthService
+@using CustomizableFormsApp.Models // For ApplicationUser
 @layout MainLayout
 @attribute [Authorize(Roles = "Admin")]
 @inject AuthService AuthService
 
 <PageTitle>User Management</PageTitle>
 
-<h2>User Management</h2>
+<h2 class="text-2xl font-semibold mb-4">User Management</h2>
 
 @if (users == null)
 {
@@ -15,33 +15,35 @@
 }
 else
 {
-    <table class="table table-hover">
-        <thead>
+    <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+        <thead class="bg-gray-100">
             <tr>
-                <th>Email</th>
-                <th>Roles</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-gray-200">
             @foreach (var user in users)
             {
                 <tr>
-                    <td>@user.Email</td>
-                    <td>@string.Join(", ", user.Roles)</td>
-                    <td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@user.Email</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@user.FullName</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@string.Join(", ", user.Roles)</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                         @if (user.IsActive)
                         {
-                            <span class="badge bg-success">Active</span>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
                         }
                         else
                         {
-                            <span class="badge bg-danger">Inactive</span>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Inactive</span>
                         }
                     </td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary"
+                    <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-indigo-600 hover:text-indigo-900"
                                 @onclick="() => EditUser(user.Id)">
                             Edit
                         </button>
@@ -57,19 +59,37 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        users = await AuthService.GetAllUsersAsync();
+        // Fetch all ApplicationUser objects
+        var applicationUsers = await AuthService.GetAllUsersAsync();
+
+        // Map ApplicationUser to UserDto and fetch roles for each
+        users = new List<UserDto>();
+        foreach (var appUser in applicationUsers)
+        {
+            var userDto = new UserDto
+            {
+                Id = appUser.Id,
+                Email = appUser.Email ?? "N/A", // Email can be null
+                FullName = appUser.FullName, // Assuming FullName property exists on ApplicationUser
+                IsActive = true // Placeholder: You might want to check appUser.LockoutEnd for actual active status
+            };
+            userDto.Roles = (await AuthService.GetUserRolesAsync(appUser)).ToList();
+            users.Add(userDto);
+        }
     }
 
     private void EditUser(string userId)
     {
-    {
         // Navigation to user edit page would go here
+        // Example: Navigation.NavigateTo($"/admin/users/edit/{userId}");
     }
 
+    // DTO for displaying user information in the table
     public class UserDto
     {
-        public string Id { get; set; }
-        public string Email { get; set; }
+        public string Id { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
         public List<string> Roles { get; set; } = new();
         public bool IsActive { get; set; }
     }

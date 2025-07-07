@@ -1,12 +1,25 @@
-﻿namespace CustomizableFormsApp.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-public class FormSubmission
+namespace CustomizableFormsApp.Models
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid TemplateId { get; set; }
-    public Guid? SubmitterUserId { get; set; }
-    public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
-    public string AnswersJson { get; set; } = "{}"; // JSONB
+    public class FormSubmission
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public Guid SubmissionId { get; set; } // Primary key for FormSubmission
 
-    public Template? Template { get; set; }
+        [Required]
+        public Guid TemplateId { get; set; } // Foreign key to Template
+        public Template Template { get; set; } = null!; // Navigation property
+
+        // Nullable for non-authenticated submissions
+        public string? SubmitterUserId { get; set; }
+        public ApplicationUser? SubmitterUser { get; set; } // Navigation property
+
+        public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
+
+        [Column(TypeName = "jsonb")] // Stored as JSONB in PostgreSQL
+        public string AnswersJson { get; set; } = "{}"; // JSON string for dynamic answers
+    }
 }

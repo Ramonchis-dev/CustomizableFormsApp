@@ -1,12 +1,27 @@
-﻿namespace CustomizableFormsApp.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-public class QuestionOption
+namespace CustomizableFormsApp.Models
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid QuestionId { get; set; }
-    public string Text { get; set; } = string.Empty;
-    public string Value { get; set; } = string.Empty;
-    public int OrderIndex { get; set; }
+    public class QuestionOption
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public Guid Id { get; set; } // Primary key for QuestionOption
 
-    public Question? Question { get; set; }
+        [Required]
+        public Guid QuestionId { get; set; } // Foreign key to Question
+        public Question Question { get; set; } = null!; // Navigation property
+
+        [Required]
+        [MaxLength(255)]
+        public string Text { get; set; } = string.Empty; // Display text for the option
+
+        [Required]
+        [MaxLength(255)]
+        public string Value { get; set; } = string.Empty; // Stored value for the option
+
+        [Required]
+        public int OrderIndex { get; set; } // Order of option within question
+    }
 }

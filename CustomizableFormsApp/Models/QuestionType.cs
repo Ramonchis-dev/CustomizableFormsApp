@@ -1,11 +1,13 @@
-﻿namespace CustomizableFormsApp.Models;
-
-public enum QuestionType
+﻿namespace CustomizableFormsApp.Models
 {
-    Text,
-    Number,
-    Date,
-    Dropdown,
-    MultiSelect,
-    Paragraph
+    public enum QuestionType
+    {
+        Text,
+        Number,
+        Date,
+        Dropdown,
+        MultiSelect,
+        Checkbox,
+        Radio
+    }
 }
