@@ -21,7 +21,7 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore();
 
 
-// NEW: Use your extension method to add database services
+// Use your extension method to add database services
 builder.Services.AddDatabaseServices(builder.Configuration);
 
 
