@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using Npgsql; // Add this using directive for NpgsqlConnectionStringBuilder
 
 namespace CustomizableFormsApp.Extensions;
 
@@ -21,41 +22,22 @@ public static class ServiceCollectionExtensions
 
         // Prioritize DATABASE_URL environment variable
         var envConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+
         if (!string.IsNullOrEmpty(envConnectionString))
         {
-            // If DATABASE_URL is present, it MUST be a postgres:// URI for this logic
-            if (envConnectionString.StartsWith("postgres://"))
-            {
-                try
-                {
-                    var uri = new Uri(envConnectionString);
-                    var userInfo = uri.UserInfo.Split(':');
+            finalConnectionString = envConnectionString;
+            logger.LogInformation("Using DATABASE_URL from environment variable: {MaskedConnectionString}", MaskConnectionString(finalConnectionString));
 
-                    finalConnectionString =
-                        $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};" +
-                        $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
-                    logger.LogInformation("Successfully parsed DATABASE_URL (URI format) and constructed connection string.");
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to parse DATABASE_URL (URI format). Raw string: {RawConnectionString}", envConnectionString);
-                    throw new InvalidOperationException("Failed to parse DATABASE_URL environment variable as a PostgreSQL URI.", ex);
-                }
-            }
-            else
+            // Ensure SSL Mode and Trust Server Certificate are present for Render
+            if (!finalConnectionString.Contains("SSL Mode=Require", StringComparison.OrdinalIgnoreCase))
             {
-                // If DATABASE_URL is set but NOT a postgres:// URI, it's likely a direct connection string.
-                // We need to ensure SSL parameters are added if not already present.
-                finalConnectionString = envConnectionString;
-                if (!finalConnectionString.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase))
-                {
-                    finalConnectionString += ";SSL Mode=Require;Trust Server Certificate=true;";
-                    logger.LogWarning("DATABASE_URL is not a URI. Added SSL Mode=Require and Trust Server Certificate=true. Final: {ConnectionString}", finalConnectionString);
-                }
-                else
-                {
-                    logger.LogInformation("DATABASE_URL is not a URI, using as-is (assuming SSL is configured): {ConnectionString}", finalConnectionString);
-                }
+                finalConnectionString += ";SSL Mode=Require";
+                logger.LogInformation("Added 'SSL Mode=Require' to connection string.");
+            }
+            if (!finalConnectionString.Contains("Trust Server Certificate=true", StringComparison.OrdinalIgnoreCase))
+            {
+                finalConnectionString += ";Trust Server Certificate=true";
+                logger.LogInformation("Added 'Trust Server Certificate=true' to connection string.");
             }
         }
         else
@@ -65,13 +47,18 @@ public static class ServiceCollectionExtensions
             if (!string.IsNullOrEmpty(appSettingsConnectionString))
             {
                 finalConnectionString = appSettingsConnectionString;
-                logger.LogWarning("DATABASE_URL environment variable is not set or empty. Falling back to DefaultConnection from appsettings.json. Final: {ConnectionString}", finalConnectionString);
+                logger.LogWarning("DATABASE_URL environment variable is not set or empty. Falling back to DefaultConnection from appsettings.json: {MaskedConnectionString}", MaskConnectionString(finalConnectionString));
 
-                // IMPORTANT: Ensure SSL parameters are added for Render if using appsettings.json fallback
-                if (!finalConnectionString.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase))
+                // Ensure SSL Mode and Trust Server Certificate are present for Render if using appsettings.json fallback
+                if (!finalConnectionString.Contains("SSL Mode=Require", StringComparison.OrdinalIgnoreCase))
                 {
-                    finalConnectionString += ";SSL Mode=Require;Trust Server Certificate=true;";
-                    logger.LogWarning("Added SSL Mode=Require and Trust Server Certificate=true to DefaultConnection from appsettings.json. Final: {ConnectionString}", finalConnectionString);
+                    finalConnectionString += ";SSL Mode=Require";
+                    logger.LogInformation("Added 'SSL Mode=Require' to appsettings.json fallback connection string.");
+                }
+                if (!finalConnectionString.Contains("Trust Server Certificate=true", StringComparison.OrdinalIgnoreCase))
+                {
+                    finalConnectionString += ";Trust Server Certificate=true";
+                    logger.LogInformation("Added 'Trust Server Certificate=true' to appsettings.json fallback connection string.");
                 }
             }
             else
@@ -80,7 +67,7 @@ public static class ServiceCollectionExtensions
             }
         }
 
-        logger.LogInformation("Attempting to connect with connection string: {MaskedConnectionString}", MaskConnectionString(finalConnectionString));
+        logger.LogInformation("Final connection string being used: {MaskedConnectionString}", MaskConnectionString(finalConnectionString));
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(finalConnectionString));
@@ -91,11 +78,19 @@ public static class ServiceCollectionExtensions
     // Helper method to mask password in logs
     private static string MaskConnectionString(string connectionString)
     {
-        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
-        if (!string.IsNullOrEmpty(builder.Password))
+        try
         {
-            builder.Password = "********";
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
+            if (!string.IsNullOrEmpty(builder.Password))
+            {
+                builder.Password = "********";
+            }
+            return builder.ToString();
         }
-        return builder.ToString();
+        catch (Exception ex)
+        {
+            // If the connection string is so malformed it can't even be masked, log and return original
+            return $"[Error masking string: {ex.Message}] {connectionString}";
+        }
     }
 }
