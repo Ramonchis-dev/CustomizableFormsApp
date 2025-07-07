@@ -1,0 +1,32 @@
+﻿@page "/forms/submitted/{SubmissionId:guid}" @* Updated page directive to match FormSubmit.razor's navigation *@
+@using CustomizableFormsApp.Components.Layout
+@layout MainLayout
+@using Microsoft.AspNetCore.Components // For [Parameter]
+@inject NavigationManager Navigation // Inject NavigationManager to go back to other pages
+
+<PageTitle>Thank You</PageTitle>
+
+<div class="text-center py-5">
+    <div class="card mx-auto" style="max-width: 500px;">
+        <div class="card-body">
+            @* Removed duplicate <div class="card-body"> tag *@
+            <h1 class="text-success"><i class="bi bi-check-circle-fill"></i></h1>
+            <h2 class="text-2xl font-semibold mb-2">Thank You!</h2>
+            <p class="lead text-gray-700">Your form has been submitted successfully.</p>
+            @if (SubmissionId != Guid.Empty)
+            {
+                <p class="text-gray-600">Your submission ID is: <strong>@SubmissionId</strong></p>
+            }
+            <p class="text-gray-600">We appreciate your time and responses.</p>
+            <div class="mt-4">
+                <button class="btn btn-primary" onclick="() => Navigation.NavigateTo(&quot;/&quot;)">Return Home</button>
+                <button class="btn btn-secondary ms-2" onclick="() => Navigation.NavigateTo(&quot;/templates&quot;)">View More Forms</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid SubmissionId { get; set; } // Add this parameter to capture the ID
+}
