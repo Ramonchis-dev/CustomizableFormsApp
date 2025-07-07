@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CustomizableFormsApp.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace CustomizableFormsApp.Extensions;
 
@@ -21,7 +22,7 @@ public static class ServiceCollectionExtensions
                 $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
         }
 
-        services.AddDbContext<CustomizableFormsAppDbContext>(options =>
+        services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(connectionString));
 
         return services;
