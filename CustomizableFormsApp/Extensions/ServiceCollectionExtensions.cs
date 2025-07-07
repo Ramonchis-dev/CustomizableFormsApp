@@ -13,59 +13,89 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-
-        var serviceProvider = services.BuildServiceProvider(); 
+        var serviceProvider = services.BuildServiceProvider();
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-        var logger = loggerFactory.CreateLogger("DatabaseStartup"); 
+        var logger = loggerFactory.CreateLogger("DatabaseStartup");
 
+        string finalConnectionString;
+
+        // Prioritize DATABASE_URL environment variable
         var envConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-        var appSettingsConnectionString = configuration.GetConnectionString("DefaultConnection");
-
-        string connectionString;
-
         if (!string.IsNullOrEmpty(envConnectionString))
         {
-            connectionString = envConnectionString;
-            logger.LogInformation("Using DATABASE_URL from environment variable.");
-        }
-        else if (!string.IsNullOrEmpty(appSettingsConnectionString))
-        {
-            connectionString = appSettingsConnectionString;
-            logger.LogWarning("DATABASE_URL environment variable is not set or empty. Falling back to DefaultConnection from appsettings.json: {ConnectionString}", connectionString);
+            // If DATABASE_URL is present, it MUST be a postgres:// URI for this logic
+            if (envConnectionString.StartsWith("postgres://"))
+            {
+                try
+                {
+                    var uri = new Uri(envConnectionString);
+                    var userInfo = uri.UserInfo.Split(':');
+
+                    finalConnectionString =
+                        $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};" +
+                        $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
+                    logger.LogInformation("Successfully parsed DATABASE_URL (URI format) and constructed connection string.");
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to parse DATABASE_URL (URI format). Raw string: {RawConnectionString}", envConnectionString);
+                    throw new InvalidOperationException("Failed to parse DATABASE_URL environment variable as a PostgreSQL URI.", ex);
+                }
+            }
+            else
+            {
+                // If DATABASE_URL is set but NOT a postgres:// URI, it's likely a direct connection string.
+                // We need to ensure SSL parameters are added if not already present.
+                finalConnectionString = envConnectionString;
+                if (!finalConnectionString.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase))
+                {
+                    finalConnectionString += ";SSL Mode=Require;Trust Server Certificate=true;";
+                    logger.LogWarning("DATABASE_URL is not a URI. Added SSL Mode=Require and Trust Server Certificate=true. Final: {ConnectionString}", finalConnectionString);
+                }
+                else
+                {
+                    logger.LogInformation("DATABASE_URL is not a URI, using as-is (assuming SSL is configured): {ConnectionString}", finalConnectionString);
+                }
+            }
         }
         else
         {
-            // This throw will provide a clear error if no connection string is found
-            throw new InvalidOperationException("No database connection string found. Neither DATABASE_URL environment variable nor DefaultConnection in appsettings.json is set.");
-        }
-
-        if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgres://"))
-        {
-            try
+            // Fallback to DefaultConnection from appsettings.json
+            var appSettingsConnectionString = configuration.GetConnectionString("DefaultConnection");
+            if (!string.IsNullOrEmpty(appSettingsConnectionString))
             {
-                var uri = new Uri(connectionString);
-                var userInfo = uri.UserInfo.Split(':');
+                finalConnectionString = appSettingsConnectionString;
+                logger.LogWarning("DATABASE_URL environment variable is not set or empty. Falling back to DefaultConnection from appsettings.json. Final: {ConnectionString}", finalConnectionString);
 
-                connectionString =
-                    $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};" +
-                    $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
-                logger.LogInformation("Successfully parsed PostgreSQL URI connection string.");
+                // IMPORTANT: Ensure SSL parameters are added for Render if using appsettings.json fallback
+                if (!finalConnectionString.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase))
+                {
+                    finalConnectionString += ";SSL Mode=Require;Trust Server Certificate=true;";
+                    logger.LogWarning("Added SSL Mode=Require and Trust Server Certificate=true to DefaultConnection from appsettings.json. Final: {ConnectionString}", finalConnectionString);
+                }
             }
-            catch (Exception ex)
+            else
             {
-                logger.LogError(ex, "Failed to parse PostgreSQL URI from DATABASE_URL. Raw string: {RawConnectionString}", connectionString);
-                // Re-throw to ensure the app crashes with a clear error if parsing fails
-                throw new InvalidOperationException("Failed to parse DATABASE_URL environment variable.", ex);
+                throw new InvalidOperationException("No database connection string found. Neither DATABASE_URL environment variable nor DefaultConnection in appsettings.json is set.");
             }
         }
-        else
-        {
-            logger.LogInformation("Connection string is not a postgres URI, using as-is: {ConnectionString}", connectionString);
-        }
+
+        logger.LogInformation("Attempting to connect with connection string: {MaskedConnectionString}", MaskConnectionString(finalConnectionString));
 
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseNpgsql(finalConnectionString));
 
         return services;
+    }
+
+    // Helper method to mask password in logs
+    private static string MaskConnectionString(string connectionString)
+    {
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        if (!string.IsNullOrEmpty(builder.Password))
+        {
+            builder.Password = "********";
+        }
+        return builder.ToString();
     }
 }
