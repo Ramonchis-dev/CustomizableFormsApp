@@ -1,108 +1,155 @@
-﻿@page "/form/{TemplateId:guid}"
+﻿@page "/forms/submit/{TemplateId:guid}"
+@using CustomizableFormsApp.Models
+@using CustomizableFormsApp.Services
+@using Microsoft.AspNetCore.Components
+@using System.Text.Json
+@using System.Linq
 @inject TemplateService TemplateService
-@inject FormSubmissionService SubmissionService
+@inject FormSubmissionService FormSubmissionService
+@inject NavigationManager Navigation
+
+<PageTitle>Submit Form</PageTitle>
 
 @if (template == null)
 {
-    <p>Loading...</p>
+    <p>Loading form template...</p>
 }
 else
 {
-    <h2>@template.Title</h2>
-    <p>@template.Description</p>
+    <h2 class="text-2xl font-semibold mb-4">Submit: @template.Title</h2>
+    <p class="text-gray-600 mb-6">@template.Description</p>
 
-    <EditForm Model="@submission" OnValidSubmit="SubmitForm">
+    <EditForm Model="@formAnswers" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
         @foreach (var question in template.Questions.OrderBy(q => q.OrderIndex))
         {
-            <div class="mb-4">
-                <label class="form-label">@question.Text</label>
-                @if (question.IsRequired)
+            <div class="mb-4 p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+                <label class="block text-lg font-medium text-gray-800 mb-2">
+                    @question.OrderIndex. @question.Text
+                    @if (question.IsRequired)
+                    {
+                        <span class="text-red-500">*</span>
+                    }
+                </label>
+                @if (!string.IsNullOrEmpty(question.Description))
                 {
-                    <span class="text-danger">*</span>
+                    <p class="text-sm text-gray-500 mb-2">@question.Description</p>
+                }
+
+                @{
+                    var answer = formAnswers.FirstOrDefault(a => a.QuestionId == question.Id);
+                    if (answer == null)
+                    {
+                        answer = new Answer { QuestionId = question.Id };
+                        formAnswers.Add(answer);
+                    }
                 }
 
                 @switch (question.Type)
                 {
                     case QuestionType.Text:
-                        <InputText class="form-control" @bind-Value="GetAnswer(question).TextValue" />
+                        <InputText @bind-Value="answer.TextValue" class="form-input block w-full rounded-md border-gray-300" placeholder="Your short answer" />
+                        break;
+                    case QuestionType.Paragraph:
+                        <InputTextArea @bind-Value="answer.TextValue" class="form-textarea block w-full rounded-md border-gray-300" rows="4" placeholder="Your long answer" />
                         break;
                     case QuestionType.Number:
-                        <InputNumber class="form-control" @bind-Value="GetAnswer(question).NumberValue" />
+                        <InputNumber @bind-Value="answer.NumberValue" class="form-input block w-full rounded-md border-gray-300" placeholder="Enter a number" />
                         break;
                     case QuestionType.Date:
-                        <InputDate class="form-control" @bind-Value="GetAnswer(question).DateValue" />
+                        <InputDate @bind-Value="answer.DateValue" class="form-input block w-full rounded-md border-gray-300" />
                         break;
                     case QuestionType.Dropdown:
-                        <InputSelect class="form-select" @bind-Value="GetAnswer(question).SelectedOption">
-                            <option value="">-- Select --</option>
-                            @foreach (var option in question.Options)
+                        <InputSelect @bind-Value="answer.SelectedOptionValue" class="form-select block w-full rounded-md border-gray-300">
+                            <option value="">Select an option</option>
+                            @foreach (var option in question.Options.OrderBy(o => o.OrderIndex))
                             {
                                 <option value="@option.Value">@option.Text</option>
                             }
                         </InputSelect>
                         break;
-                    case QuestionType.MultiSelect:
-                        <div>
-                            @foreach (var option in question.Options)
+                    case QuestionType.Radio:
+                        <InputRadioGroup @bind-Value="answer.SelectedOptionValue" Name="@question.Id.ToString()">
+                            @foreach (var option in question.Options.OrderBy(o => o.OrderIndex))
                             {
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
-                                           @bind="GetAnswer(question).SelectedOptions[option.Value]" />
-                                    <label class="form-check-label">@option.Text</label>
+                                    <InputRadio Value="@option.Value" Id="@(question.Id + "_" + option.Id)" />
+                                    <label class="form-check-label ml-2" for="@(question.Id + "_" + option.Id)">@option.Text</label>
                                 </div>
                             }
-                        </div>
+                        </InputRadioGroup>
                         break;
-                    case QuestionType.Paragraph:
-                        <InputTextArea class="form-control" @bind-Value="GetAnswer(question).TextValue" />
+                    case QuestionType.Checkbox:
+                    case QuestionType.MultiSelect:
+                        @foreach (var option in question.Options.OrderBy(o => o.OrderIndex))
+                        {
+                            <div class="form-check">
+                                <InputCheckbox bind-Value="answer.SelectedOptionValues.Contains(option.Value)"
+                                               onchange="(e) => ToggleMultiSelectOption(answer, option.Value, (bool)e.Value!)"
+                                               Id="@(question.Id + "_" + option.Id)" />
+                                <label class="form-check-label ml-2" for="@(question.Id + "_" + option.Id)">@option.Text</label>
+                            </div>
+                        }
                         break;
                 }
             </div>
         }
 
-        <button type="submit" class="btn btn-primary">Submit</button>
+        <div class="mt-6">
+            <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Submit Form
+            </button>
+        </div>
     </EditForm>
 }
 
 @code {
-    [Parameter] public Guid TemplateId { get; set; }
+    [Parameter]
+    public Guid TemplateId { get; set; }
 
     private Template? template;
-    private FormSubmission submission = new();
-    private Dictionary<Guid, Answer> answers = new();
+    private List<Answer> formAnswers = new();
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
-        template = await TemplateService.GetTemplateAsync(TemplateId);
+        template = await TemplateService.GetTemplateByIdAsync(TemplateId);
+
         if (template != null)
         {
-            submission.TemplateId = template.Id;
-            submission.SubmittedAt = DateTime.UtcNow;
-        }
-    }
-
-    private Answer GetAnswer(Question question)
-    {
-        if (!answers.ContainsKey(question.Id))
-        {
-            answers[question.Id] = new Answer
+            foreach (var question in template.Questions.OrderBy(q => q.OrderIndex))
             {
-                QuestionId = question.Id,
-                SelectedOptions = new Dictionary<string, bool>()
-            };
+                formAnswers.Add(new Answer { QuestionId = question.Id });
+            }
         }
-        return answers[question.Id];
     }
 
-    private async Task SubmitForm()
+    private async Task HandleValidSubmit()
     {
-        // Convert answers to JSON
-        submission.AnswersJson = JsonSerializer.Serialize(answers.Values);
+        if (template == null) return;
 
-        // Save submission
-        await SubmissionService.CreateSubmissionAsync(submission);
+        var submission = new FormSubmission
+        {
+            TemplateId = template.TemplateId,
+            AnswersJson = JsonSerializer.Serialize(formAnswers)
+        };
 
-        // Redirect to thank you page
-        Navigation.NavigateTo("/submission-thank-you");
+        await FormSubmissionService.CreateSubmissionAsync(submission);
+
+        Navigation.NavigateTo($"/forms/submitted/{submission.SubmissionId}");
+    }
+
+    // THIS METHOD IS CRITICAL - ENSURE IT IS EXACTLY AS SHOWN AND MANUALLY RE-TYPE ITS BODY IF NEEDED
+    private void ToggleMultiSelectOption(Answer answer, string optionValue, bool isChecked)
+    {
+        if (isChecked && !answer.SelectedOptionValues.Contains(optionValue))
+        {
+            answer.SelectedOptionValues.Add(optionValue);
+        }
+        else if (!isChecked && answer.SelectedOptionValues.Contains(optionValue))
+        {
+            answer.SelectedOptionValues.Remove(optionValue);
+        }
     }
 }

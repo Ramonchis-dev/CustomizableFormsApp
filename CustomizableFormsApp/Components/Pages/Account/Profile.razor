@@ -2,11 +2,10 @@
 @using CustomizableFormsApp.Components.Layout
 @using CustomizableFormsApp.Models // For ApplicationUser
 @using Microsoft.AspNetCore.Components.Authorization // For AuthenticationStateProvider
-@using System.ComponentModel.DataAnnotations
-@layout MainLayout
-@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations // Added for Required, MaxLength
+@using System.Security.Claims // Added for ClaimTypes
 @inject AuthService AuthService
-@inject AuthenticationStateProvider AuthenticationStateProvider // Inject this
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 
 <PageTitle>My Profile</PageTitle>
@@ -51,7 +50,7 @@
 
 @code {
     private ProfileModel profileModel = new();
-    private ApplicationUser? currentUser; // Store the fetched ApplicationUser
+    private ApplicationUser? currentUser;
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,7 +77,6 @@
     {
         if (currentUser != null)
         {
-            // Pass userId, firstName, and lastName
             var result = await AuthService.UpdateProfileAsync(
                 currentUser.Id,
                 profileModel.FirstName,
@@ -87,13 +85,10 @@
 
             if (result.Succeeded)
             {
-                // Optionally show a success message
-                Navigation.NavigateTo("/", forceLoad: true); // Force reload to update UI with new name
+                Navigation.NavigateTo("/", forceLoad: true);
             }
             else
             {
-                // Handle errors, e.g., display them in ValidationSummary
-                // For simplicity, just log for now
                 Console.WriteLine($"Profile update failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
         }
@@ -104,10 +99,9 @@
         Navigation.NavigateTo("/");
     }
 
-    // DTO for profile form data
     public class ProfileModel
     {
-        public string Email { get; set; } = string.Empty; // Read-only in UI
+        public string Email { get; set; } = string.Empty;
         [Required(ErrorMessage = "First Name is required.")]
         [MaxLength(100)]
         public string FirstName { get; set; } = string.Empty;

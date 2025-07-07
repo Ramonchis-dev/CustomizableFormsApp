@@ -1,6 +1,8 @@
 ﻿@page "/templates/view/{TemplateId:guid}"
-@using CustomizableFormsApp.Components.Layout
-@layout MainLayout
+@using CustomizableFormsApp.Models
+@using CustomizableFormsApp.Services
+@using Microsoft.AspNetCore.Components
+@using System.Linq
 @inject TemplateService TemplateService
 @inject NavigationManager Navigation
 
@@ -12,68 +14,72 @@
 }
 else
 {
-    <div class="card">
-        <div class="card-header">
-            <h2>@template.Title</h2>
-            <p class="text-muted">@template.Description</p>
-        </div>
-        <div class="card-body">
-            <h4>Questions</h4>
-            <ol class="list-group list-group-numbered">
-                @foreach (var question in template.Questions.OrderBy(q => q.OrderIndex))
-                {
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h5>@question.Text</h5>
-                                <p class="text-muted">Type: @question.Type</p>
-                                @if (question.IsRequired)
-                                {
-                                    <span class="badge bg-warning text-dark">Required</span>
-                                }
-                            </div>
-                        </div>
+    <h2 class="text-2xl font-semibold mb-4">Template: @template.Title</h2>
+    <p class="text-gray-600 mb-6">@template.Description</p>
 
-                        @if (question.Options.Any())
+    <h3 class="text-xl font-semibold mt-6 mb-4">Questions</h3>
+    @if (template.Questions.Any())
+    {
+        <div class="space-y-4">
+            @foreach (var question in template.Questions.OrderBy(q => q.OrderIndex))
+            {
+                <div class="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+                    <p class="text-lg font-medium text-gray-800 mb-1">
+                        @question.OrderIndex. @question.Text
+                        @if (question.IsRequired)
                         {
-                            <div class="mt-2">
-                                <h6>Options:</h6>
-                                <ul>
-                                    @foreach (var option in question.Options)
-                                    {
-                                        <li>@option.Text (@option.Value)</li>
-                                    }
-                                </ul>
-                            </div>
+                            <span class="text-red-500">*</span>
                         }
-                    </li>
-                }
-            </ol>
+                    </p>
+                    @if (!string.IsNullOrEmpty(question.Description))
+                    {
+                        <p class="text-sm text-gray-500 mb-2">@question.Description</p>
+                    }
+                    <p class="text-sm text-gray-600">Type: @question.Type.ToString()</p>
+
+                    @if (question.Options.Any())
+                    {
+                        <h4 class="text-md font-semibold mt-3 mb-1">Options:</h4>
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            @foreach (var option in question.Options.OrderBy(o => o.OrderIndex))
+                            {
+                                <li>@option.Text (@option.Value)</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
         </div>
-        <div class="card-footer">
-            <button class="btn btn-primary" @onclick="NavigateToEdit">Edit Template</button>
-            <button class="btn btn-secondary ms-2" @onclick="NavigateToList">Back to List</button>
-        </div>
+    }
+    else
+    {
+        <p>This template has no questions yet.</p>
+    }
+
+    <div class="mt-6 flex justify-end">
+        <button class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                onclick="() => Navigation.NavigateTo($&quot;/forms/submit/{template.TemplateId}&quot;)">
+            Submit Form
+        </button>
+        <button class="ml-3 inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                onclick="() => Navigation.NavigateTo(&quot;/templates&quot;)">
+            Back to List
+        </button>
     </div>
 }
 
 @code {
-    [Parameter] public Guid TemplateId { get; set; }
+    [Parameter]
+    public Guid TemplateId { get; set; }
+
     private Template? template;
 
-
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
-        template = await TemplateService.GetTemplateAsync(TemplateId);
-    }
-
-    private void NavigateToEdit()
-    {
-        Navigation.NavigateTo($"/templates/edit/{TemplateId}");
-    }
-
-    private void NavigateToList()
-    {
-        Navigation.NavigateTo("/templates");
+        template = await TemplateService.GetTemplateByIdAsync(TemplateId);
+        if (template == null)
+        {
+            Navigation.NavigateTo("/templates");
+        }
     }
 }

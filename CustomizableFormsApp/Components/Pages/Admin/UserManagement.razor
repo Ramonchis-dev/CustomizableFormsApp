@@ -1,6 +1,8 @@
 ﻿@page "/admin/users"
 @using CustomizableFormsApp.Components.Layout
 @using CustomizableFormsApp.Models // For ApplicationUser
+@using CustomizableFormsApp.Services // For AuthService
+@using System.Linq // For Any()
 @layout MainLayout
 @attribute [Authorize(Roles = "Admin")]
 @inject AuthService AuthService
@@ -59,18 +61,16 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // Fetch all ApplicationUser objects
         var applicationUsers = await AuthService.GetAllUsersAsync();
 
-        // Map ApplicationUser to UserDto and fetch roles for each
         users = new List<UserDto>();
         foreach (var appUser in applicationUsers)
         {
             var userDto = new UserDto
             {
                 Id = appUser.Id,
-                Email = appUser.Email ?? "N/A", // Email can be null
-                FullName = appUser.FullName, // Assuming FullName property exists on ApplicationUser
+                Email = appUser.Email ?? "N/A",
+                FullName = appUser.FullName, // Accessing the FullName property from ApplicationUser
                 IsActive = true // Placeholder: You might want to check appUser.LockoutEnd for actual active status
             };
             userDto.Roles = (await AuthService.GetUserRolesAsync(appUser)).ToList();
@@ -84,7 +84,6 @@ else
         // Example: Navigation.NavigateTo($"/admin/users/edit/{userId}");
     }
 
-    // DTO for displaying user information in the table
     public class UserDto
     {
         public string Id { get; set; } = string.Empty;

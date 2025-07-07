@@ -1,19 +1,27 @@
+using CustomizableFormsApp.Authorization; // Added for Operations and TemplateOwnerHandler
 using CustomizableFormsApp.Components;
 using CustomizableFormsApp.Data;
 using CustomizableFormsApp.Models;
-using CustomizableFormsApp.Services; // Add this using for your services
+using CustomizableFormsApp.Services;
+using Microsoft.AspNetCore.Authorization; // Added for IAuthorizationService
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection; // Ensure this is present
+using Microsoft.AspNetCore.Authorization.Infrastructure;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
-    .AddInteractiveWebAssemblyComponents();
+    .AddInteractiveWebAssemblyComponents(); // Keep this if you intend to use WASM later
 
-// Configure the PostgreSQL database connection string
+// Configure AuthenticationStateProvider
+builder.Services.AddCascadingAuthenticationState();
+// If you have a custom AuthStateProvider, register it here. Otherwise, use default.
+// builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>(); // Uncomment if you have this custom class
+builder.Services.AddAuthorizationCore(); // Add authorization services
+
 var connectionString = builder.Configuration.GetValue<string>("DATABASE_URL")
                        ?? builder.Configuration.GetConnectionString("DefaultConnection")
                        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -25,18 +33,23 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.S
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-// Add Authorization policies
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
     options.AddPolicy("UserPolicy", policy => policy.RequireRole("User"));
-    // Add other policies as needed
+    // Add policy for TemplateOwnerHandler
+    options.AddPolicy("TemplateOwner", policy =>
+        policy.Requirements.Add(new OperationAuthorizationRequirement { Name = "Update" })); // Example for Update operation
 });
 
+// Register custom authorization handlers
+builder.Services.AddSingleton<IAuthorizationHandler, TemplateOwnerHandler>();
+
+
 // Register your custom services
-builder.Services.AddScoped<TemplateService>(); // Register TemplateService
-builder.Services.AddScoped<FormSubmissionService>(); // Register FormSubmissionService
-builder.Services.AddScoped<AuthService>(); // Register AuthService
+builder.Services.AddScoped<TemplateService>();
+builder.Services.AddScoped<FormSubmissionService>();
+builder.Services.AddScoped<AuthService>();
 
 var app = builder.Build();
 
@@ -44,7 +57,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
-    app.UseMigrationsEndPoint(); // Shows database migration errors in development
+    app.UseMigrationsEndPoint();
 }
 else
 {
@@ -59,7 +72,8 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode();
-    //.AddAdditionalAssemblies(typeof(CustomizableFormsApp.Client._Imports).Assembly);
+// If you do NOT have a CustomizableFormsApp.Client project, ensure this line is commented out:
+// .AddAdditionalAssemblies(typeof(CustomizableFormsApp.Client._Imports).Assembly);
 
 // Apply migrations and seed initial data on startup
 using (var scope = app.Services.CreateScope())
@@ -71,10 +85,8 @@ using (var scope = app.Services.CreateScope())
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
-        // Apply any pending migrations
         context.Database.Migrate();
 
-        // Seed initial data (roles and admin user)
         await SeedData.Initialize(context, userManager, roleManager);
     }
     catch (Exception ex)

@@ -8,6 +8,7 @@
         Dropdown,
         MultiSelect,
         Checkbox,
-        Radio
+        Radio,
+        Paragraph
     }
 }

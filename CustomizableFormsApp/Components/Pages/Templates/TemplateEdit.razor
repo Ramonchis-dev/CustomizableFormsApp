@@ -1,172 +1,213 @@
 ﻿@page "/templates/edit/{TemplateId:guid}"
-@page "/templates/new"
-@using CustomizableFormsApp.Components.Layout
-@layout MainLayout
+@using CustomizableFormsApp.Authorization
+@using CustomizableFormsApp.Models
+@using CustomizableFormsApp.Services
+@using System.ComponentModel.DataAnnotations // Added for validation attributes
+@using System.Linq // Added for Max()
+@using System.Security.Claims // Added for ClaimTypes
 @inject TemplateService TemplateService
 @inject NavigationManager Navigation
+@inject IAuthorizationService AuthorizationService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<PageTitle>@(isNew ? "Create" : "Edit") Template</PageTitle>
+<PageTitle>Edit Template</PageTitle>
 
-<EditForm Model="@template" OnValidSubmit="SaveTemplate">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+@if (template == null)
+{
+    <p>Loading template...</p>
+}
+else
+{
+    <h2 class="text-2xl font-semibold mb-4">Edit Template: @template.Title</h2>
 
-    <div class="mb-3">
-        <label for="templateTitle" class="form-label">Template Title</label>
-        <InputText id="templateTitle" @bind-Value="template.Title" class="form-control" />
-        <ValidationMessage For="@(() => template.Title)" />
-    </div>
+    <EditForm Model="@template" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
 
-    <div class="mb-3">
-        <label for="templateDescription" class="form-label">Description</label>
-        <InputTextArea id="templateDescription" @bind-Value="template.Description"
-                       class="form-control" rows="3" />
-    </div>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700">Title</label>
+            <InputText @bind-Value="template.Title" class="form-input mt-1 block w-full rounded-md border-gray-300" />
+            <ValidationMessage For="@(() => template.Title)" />
+        </div>
 
-    <h3 class="mt-4">Questions</h3>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700">Description</label>
+            <InputTextArea @bind-Value="template.Description" class="form-textarea mt-1 block w-full rounded-md border-gray-300" rows="3" />
+        </div>
 
-    @foreach (var question in template.Questions.OrderBy(q => q.OrderIndex))
-    {
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Question @(question.OrderIndex + 1)</span>
-                <button type="button" class="btn btn-sm btn-danger"
-                        @onclick="() => RemoveQuestion(question)">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-            <div class="card-body">
-                <!-- Question editing fields -->
-                <div class="mb-3">
-                    <label class="form-label">Question Text</label>
-                    <InputText @bind-Value="question.Text" class="form-control" />
-                </div>
+        <h3 class="text-xl font-semibold mt-6 mb-4">Questions</h3>
+        @if (template.Questions.Any())
+        {
+            @for (int i = 0; i < template.Questions.Count; i++)
+            {
+                // Convert ICollection to List for direct indexing in a loop
+                var question = template.Questions.ToList()[i];
+                <div class="mb-4 p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-lg font-medium text-gray-800">Question @(i + 1)</h4>
+                        <button type="button" class="text-red-600 hover:text-red-800" @onclick="() => RemoveQuestion(question.Id)">Remove</button>
+                    </div>
 
-                <div class="row">
-                    <div class="col-md-6">
-                        <label class="form-label">Question Type</label>
-                        <InputSelect @bind-Value="question.Type" class="form-select">
-                            @foreach (var type in Enum.GetValues<QuestionType>())
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700">Question Text</label>
+                        <InputText @bind-Value="question.Text" class="form-input mt-1 block w-full rounded-md border-gray-300" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700">Question Type</label>
+                        <InputSelect @bind-Value="question.Type" class="form-select mt-1 block w-full rounded-md border-gray-300">
+                            @foreach (var type in Enum.GetValues(typeof(QuestionType)))
                             {
-                                <option value="@type">@type</option>
+                                <option value="@type">@type.ToString()</option>
                             }
                         </InputSelect>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-check mt-4">
-                            <InputCheckbox @bind-Value="question.IsRequired" class="form-check-input" />
-                            <label class="form-check-label">Required</label>
-                        </div>
+                    <div class="mb-3">
+                        <InputCheckbox @bind-Value="question.IsRequired" Id="@($"isRequired_{question.Id}")" />
+                        <label for="@($"isRequired_{question.Id}")" class="ml-2 text-sm font-medium text-gray-700">Required</label>
                     </div>
-                </div>
 
-                @if (question.Type == QuestionType.Dropdown || question.Type == QuestionType.MultiSelect)
-                {
-                    <div class="mt-3">
-                        <h5>Options</h5>
-                        @foreach (var option in question.Options)
+                    @if (question.Type == QuestionType.Dropdown || question.Type == QuestionType.MultiSelect || question.Type == QuestionType.Radio || question.Type == QuestionType.Checkbox)
+                    {
+                        <h5 class="text-md font-semibold mt-4 mb-2">Options</h5>
+                        @for (int j = 0; j < question.Options.Count; j++)
                         {
-                            <div class="input-group mb-2">
-                                <input type="text" class="form-control" @bind="option.Text"
-                                       placeholder="Option text" />
-                                <button class="btn btn-outline-danger" type="button"
-                                        @onclick="() => RemoveOption(question, option)">
-                                    <i class="bi bi-x"></i>
-                                </button>
+                            // Convert ICollection to List for direct indexing
+                            var option = question.Options.ToList()[j];
+                            <div class="flex items-center mb-2">
+                                <InputText @bind-Value="option.Text" class="form-input block w-full rounded-md border-gray-300 mr-2" placeholder="Option Text" />
+                                <InputText @bind-Value="option.Value" class="form-input block w-full rounded-md border-gray-300 mr-2" placeholder="Option Value" />
+                                <button type="button" class="text-red-600 hover:text-red-800" @onclick="() => RemoveOption(question.Id, option.Id)">Remove</button>
                             </div>
                         }
-                        <button type="button" class="btn btn-sm btn-primary"
-                                @onclick="() => AddOption(question)">
-                            Add Option
-                        </button>
-                    </div>
-                }
-            </div>
-        </div>
-    }
-
-    <button type="button" class="btn btn-primary mb-3" @onclick="AddQuestion">
-        <i class="bi bi-plus-circle"></i> Add Question
-    </button>
-
-    <div class="mt-4">
-        <button type="submit" class="btn btn-primary">Save Template</button>
-        <button type="button" class="btn btn-secondary ms-2" @onclick="Cancel">Cancel</button>
-    </div>
-</EditForm>
-
-@code {
-    [Parameter] public Guid TemplateId { get; set; }
-
-    private Template template = new();
-    private bool isNew = true;
-    private int questionCounter = 0;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (TemplateId != Guid.Empty)
-        {
-            isNew = false;
-            template = await TemplateService.GetTemplateAsync(TemplateId) ?? new Template();
+                        <button type="button" class="mt-2 text-blue-600 hover:text-blue-800" @onclick="() => AddOption(question.Id)">+ Add Option</button>
+                    }
+                </div>
+            }
         }
         else
         {
-            template = new Template { Questions = new List<Question>() };
+            <p>No questions added yet.</p>
         }
-        questionCounter = template.Questions.Count;
+
+        <div class="mt-6">
+            <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    @onclick="AddQuestion">
+                + Add Question
+            </button>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Save Template
+            </button>
+            <button type="button" class="ml-3 inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    @onclick="Cancel">
+                Cancel
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid TemplateId { get; set; }
+
+    private Template? template;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        template = await TemplateService.GetTemplateByIdAsync(TemplateId);
+
+        if (template == null)
+        {
+            Navigation.NavigateTo("/templates");
+            return;
+        }
+
+        // Authorization check (assuming Operations class is defined)
+        var authorizationResult = await AuthorizationService.AuthorizeAsync(authState.User, template, Operations.Update);
+        if (!authorizationResult.Succeeded)
+        {
+            Navigation.NavigateTo("/accessdenied");
+        }
     }
 
     private void AddQuestion()
     {
-        template.Questions.Add(new Question
+        if (template != null)
         {
-            Id = Guid.NewGuid(),
-            OrderIndex = questionCounter++,
-            Options = new List<QuestionOption>()
-        });
-    }
-
-    private void RemoveQuestion(Question question)
-    {
-        template.Questions.Remove(question);
-        // Re-index remaining questions
-        for (int i = 0; i < template.Questions.Count; i++)
-        {
-            template.Questions[i].OrderIndex = i;
-        }
-        questionCounter--;
-    }
-
-    private void AddOption(Question question)
-    {
-        question.Options.Add(new QuestionOption
-        {
-            Id = Guid.NewGuid(),
-            OrderIndex = question.Options.Count
-        });
-    }
-
-    private void RemoveOption(Question question, QuestionOption option)
-    {
-        question.Options.Remove(option);
-        // Re-index remaining options
-        for (int i = 0; i < question.Options.Count; i++)
-        {
-            question.Options[i].OrderIndex = i;
+            template.Questions.Add(new Question
+            {
+                Id = Guid.NewGuid(), // Ensure new GUID for new questions
+                OrderIndex = template.Questions.Any() ? template.Questions.Max(q => q.OrderIndex) + 1 : 1,
+                Type = QuestionType.Text,
+                IsRequired = false,
+                Text = "New Question"
+            });
         }
     }
 
-    private async Task SaveTemplate()
+    private void RemoveQuestion(Guid questionId)
     {
-        if (isNew)
+        if (template != null)
         {
-            await TemplateService.CreateTemplateAsync(template);
+            var questionToRemove = template.Questions.FirstOrDefault(q => q.Id == questionId);
+            if (questionToRemove != null)
+            {
+                template.Questions.Remove(questionToRemove);
+            }
         }
-        else
+    }
+
+    private void AddOption(Guid questionId)
+    {
+        if (template != null)
         {
+            var question = template.Questions.FirstOrDefault(q => q.Id == questionId);
+            if (question != null)
+            {
+                question.Options.Add(new QuestionOption
+                {
+                    Id = Guid.NewGuid(), // Ensure new GUID for new options
+                    OrderIndex = question.Options.Any() ? question.Options.Max(o => o.OrderIndex) + 1 : 1,
+                    Text = "New Option",
+                    Value = Guid.NewGuid().ToString("N").Substring(0, 8)
+                });
+            }
+        }
+    }
+
+    private void RemoveOption(Guid questionId, Guid optionId)
+    {
+        if (template != null)
+        {
+            var question = template.Questions.FirstOrDefault(q => q.Id == questionId);
+            if (question != null)
+            {
+                var optionToRemove = question.Options.FirstOrDefault(o => o.Id == optionId);
+                if (optionToRemove != null)
+                {
+                    question.Options.Remove(optionToRemove);
+                }
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (template != null)
+        {
+            if (string.IsNullOrEmpty(template.AuthorId) && currentUserId != null)
+            {
+                template.AuthorId = currentUserId;
+            }
             await TemplateService.UpdateTemplateAsync(template);
+            Navigation.NavigateTo("/templates");
         }
-        Navigation.NavigateTo("/templates");
     }
 
     private void Cancel()

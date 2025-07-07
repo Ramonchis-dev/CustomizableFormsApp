@@ -1,9 +1,7 @@
 ﻿using CustomizableFormsApp.Data;
 using CustomizableFormsApp.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
 
 namespace CustomizableFormsApp.Services
 {
@@ -19,8 +17,8 @@ namespace CustomizableFormsApp.Services
         public async Task<List<Template>> GetTemplatesAsync()
         {
             return await _context.Templates
-                .Include(t => t.Author) // Include author details
-                .OrderByDescending(t => t.CreatedAt) // Order by creation date
+                .Include(t => t.Author)
+                .OrderByDescending(t => t.CreatedAt)
                 .ToListAsync();
         }
 
@@ -69,13 +67,11 @@ namespace CustomizableFormsApp.Services
 
                 if (existingQuestion == null)
                 {
-                    // Add new question
-                    question.TemplateId = existing.TemplateId; // Ensure FK is set
+                    question.TemplateId = existing.TemplateId;
                     existing.Questions.Add(question);
                 }
                 else
                 {
-                    // Update existing question properties
                     existingQuestion.Text = question.Text;
                     existingQuestion.Description = question.Description;
                     existingQuestion.Type = question.Type;
@@ -99,13 +95,11 @@ namespace CustomizableFormsApp.Services
 
                         if (existingOption == null)
                         {
-                            // Add new option
-                            option.QuestionId = existingQuestion.Id; // Ensure FK is set
+                            option.QuestionId = existingQuestion.Id;
                             existingQuestion.Options.Add(option);
                         }
                         else
                         {
-                            // Update existing option properties
                             existingOption.Text = option.Text;
                             existingOption.Value = option.Value;
                             existingOption.OrderIndex = option.OrderIndex;
@@ -127,11 +121,9 @@ namespace CustomizableFormsApp.Services
             }
         }
 
+        // Ensure ONLY ONE of this method exists in the file
         public async Task<object> GetTemplateAnalyticsAsync(Guid templateId)
         {
-            // Implement logic to analyze submissions for a given template
-            // This would involve querying FormSubmissions and parsing AnswersJson
-            // For now, return a dummy object
             var submissionsCount = await _context.FormSubmissions
                                                 .Where(fs => fs.TemplateId == templateId)
                                                 .CountAsync();

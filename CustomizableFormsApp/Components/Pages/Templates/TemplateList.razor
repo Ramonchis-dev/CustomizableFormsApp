@@ -1,15 +1,21 @@
 ﻿@page "/templates"
-@using CustomizableFormsApp.Components.Layout
-@layout MainLayout
+@using CustomizableFormsApp.Models
+@using CustomizableFormsApp.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web // Added for MouseEventArgs
+@using System.Linq // Added for Any()
 @inject TemplateService TemplateService
 @inject NavigationManager Navigation
+@inject IAuthorizationService AuthorizationService
 
 <PageTitle>Templates</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Form Templates</h2>
-    <button class="btn btn-primary" @onclick="CreateNewTemplate">
-        <i class="bi bi-plus-circle"></i> New Template
+<h2 class="text-2xl font-semibold mb-4">Form Templates</h2>
+
+<div class="mb-4">
+    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            @onclick="CreateNewTemplate">
+        + Create New Template
     </button>
 </div>
 
@@ -19,37 +25,34 @@
 }
 else if (!templates.Any())
 {
-    <div class="alert alert-info">
-        No templates found. Create your first template!
-    </div>
+    <p>No templates created yet. Click "Create New Template" to get started!</p>
 }
 else
 {
-    <table class="table table-hover">
-        <thead>
+    <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+        <thead class="bg-gray-100">
             <tr>
-                <th>Title</th>
-                <th>Questions</th>
-                <th>Created</th>
-                <th>Actions</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-gray-200">
             @foreach (var template in templates)
             {
-                <tr>
-                    <td>@template.Title</td>
-                    <td>@template.Questions.Count</td>
-                    <td>@template.CreatedAt.ToString("d")</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary"
-                                @onclick="() => EditTemplate(template.Id)">
-                            Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger ms-2"
-                                @onclick="() => DeleteTemplate(template.Id)">
-                            Delete
-                        </button>
+                <tr class="hover:bg-gray-50" @oncontextmenu="e => ShowContextMenu(e, template.TemplateId)" @oncontextmenu:preventDefault>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@template.Title</td>
+                    <td class="px-4 py-2 text-sm text-gray-900">@template.Description</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@template.Author?.FullName</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@template.CreatedAt.ToString("d")</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-indigo-600 hover:text-indigo-900 mr-2" @onclick="() => ViewTemplate(template.TemplateId)">View</button>
+                        <AuthorizeView Roles="Admin">
+                            <button class="text-blue-600 hover:text-blue-900 mr-2" @onclick="() => EditTemplate(template.TemplateId)">Edit</button>
+                            <button class="text-red-600 hover:text-red-900" @onclick="() => DeleteTemplate(template.TemplateId)">Delete</button>
+                        </AuthorizeView>
                     </td>
                 </tr>
             }
@@ -57,8 +60,21 @@ else
     </table>
 }
 
+@if (showContextMenu)
+{
+    <div class="absolute bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10"
+         style="left: @(contextMenuX)px; top: @(contextMenuY)px;">
+        <button class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" @onclick="() => EditTemplate(selectedTemplateId)">Edit Template</button>
+        <button class="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50" @onclick="() => DeleteTemplate(selectedTemplateId)">Delete Template</button>
+    </div>
+}
+
 @code {
-    private List<Template> templates = new();
+    private List<Template>? templates;
+    private bool showContextMenu;
+    private double contextMenuX;
+    private double contextMenuY;
+    private Guid selectedTemplateId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -67,18 +83,38 @@ else
 
     private void CreateNewTemplate()
     {
-        Navigation.NavigateTo("/templates/new");
+        Navigation.NavigateTo("/templates/create");
+    }
+
+    private void ViewTemplate(Guid templateId)
+    {
+        Navigation.NavigateTo($"/templates/view/{templateId}");
     }
 
     private void EditTemplate(Guid templateId)
     {
         Navigation.NavigateTo($"/templates/edit/{templateId}");
+        showContextMenu = false;
     }
 
     private async Task DeleteTemplate(Guid templateId)
     {
         await TemplateService.DeleteTemplateAsync(templateId);
         templates = await TemplateService.GetTemplatesAsync();
-        StateHasChanged();
+        showContextMenu = false;
+    }
+
+    private void ShowContextMenu(MouseEventArgs e, Guid templateId)
+    {
+        selectedTemplateId = templateId;
+        contextMenuX = e.ClientX;
+        contextMenuY = e.ClientY;
+        showContextMenu = true;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // This is a basic way to hide the context menu on subsequent clicks.
+        // For a more robust solution, you might need JS interop to detect clicks outside the div.
     }
 }

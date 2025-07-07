@@ -1,35 +1,37 @@
 ﻿using CustomizableFormsApp.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
+using System.Security.Claims; // Added for ClaimTypes
+using System.Threading.Tasks;
 
-namespace CustomizableFormsApp.Authorization;
-
-public class TemplateOwnerHandler : AuthorizationHandler<TemplateOwnerRequirement, Template>
+namespace CustomizableFormsApp.Authorization
 {
-    private readonly CustomizableFormsAppDbContext _context;
-
-    public TemplateOwnerHandler(CustomizableFormsAppDbContext context)
+    public class TemplateOwnerHandler : AuthorizationHandler<OperationAuthorizationRequirement, Template>
     {
-        _context = context;
-    }
-
-    protected override async Task HandleRequirementAsync(
-        AuthorizationHandlerContext context,
-        TemplateOwnerRequirement requirement,
-        Template resource)
-    {
-        var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+        protected override Task HandleRequirementAsync(
+            AuthorizationHandlerContext context,
+            OperationAuthorizationRequirement requirement,
+            Template resource)
         {
-            var template = await _context.Templates
-                .FirstOrDefaultAsync(t => t.Id == resource.Id && t.AuthorId == userGuid);
+            if (!context.User.Identity?.IsAuthenticated == true)
+            {
+                return Task.CompletedTask;
+            }
 
-            if (template != null)
+            if (context.User.IsInRole("Admin"))
+            {
+                context.Succeed(requirement);
+                return Task.CompletedTask;
+            }
+
+            // Compare the user's NameIdentifier claim (which is typically the UserId)
+            // with the Template's AuthorId.
+            if (resource.AuthorId == context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value)
             {
                 context.Succeed(requirement);
             }
+
+            return Task.CompletedTask;
         }
     }
 }

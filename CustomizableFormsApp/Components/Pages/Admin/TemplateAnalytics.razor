@@ -1,65 +1,35 @@
-﻿@page "/admin/analytics"
-@using CustomizableFormsApp.Components.Layout
-@layout MainLayout
+﻿@page "/admin/analytics/{TemplateId:guid}"
+@using CustomizableFormsApp.Services
+@using Microsoft.AspNetCore.Components // Added for Parameter
 @attribute [Authorize(Roles = "Admin")]
-@inject FormSubmissionService SubmissionService
 @inject TemplateService TemplateService
+@inject NavigationManager Navigation
 
 <PageTitle>Template Analytics</PageTitle>
 
-<h2>Template Analytics</h2>
+<h2 class="text-2xl font-semibold mb-4">Template Analytics</h2>
 
-@if (templates == null || submissions == null)
+@if (analyticsData == null)
 {
-    <p>Loading analytics data...</p>
+    <p>Loading analytics...</p>
 }
 else
 {
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5>Submission Trends</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Chart would go here -->
-                    <p class="text-muted">Chart implementation would go here</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Top Templates</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group">
-                        @foreach (var template in templates.OrderByDescending(t => t.SubmissionCount).Take(5))
-                        {
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                @template.Title
-                                <span class="badge bg-primary rounded-pill">@template.SubmissionCount</span>
-                            </li>
-                        }
-                    </ul>
-                </div>
-            </div>
-        </div>
+    <div class="bg-white p-6 rounded-lg shadow-sm">
+        <h3 class="text-xl font-semibold mb-3">Analytics for Template ID: @TemplateId</h3>
+        <p>Total Submissions: @analyticsData.TotalSubmissions</p>
+        <p>Message: @analyticsData.Message</p>
     </div>
 }
 
 @code {
-    private List<TemplateAnalyticsDto> templates = new();
-    private List<FormSubmission> submissions = new();
+    [Parameter]
+    public Guid TemplateId { get; set; }
+
+    private dynamic? analyticsData;
 
     protected override async Task OnInitializedAsync()
     {
-        templates = await TemplateService.GetTemplateAnalyticsAsync();
-        submissions = await SubmissionService.GetAllSubmissionsAsync();
-    }
-
-    public class TemplateAnalyticsDto : Template
-    {
-        public int SubmissionCount { get; set; }
+        analyticsData = await TemplateService.GetTemplateAnalyticsAsync(TemplateId);
     }
 }

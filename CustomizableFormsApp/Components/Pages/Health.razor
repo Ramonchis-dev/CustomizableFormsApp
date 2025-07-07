@@ -1,81 +1,52 @@
-﻿@page "/templates"
-@inject TemplateService TemplateService
-@inject NavigationManager Navigation
+﻿@page "/health"
+@using CustomizableFormsApp.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.DependencyInjection // Added for ServiceProvider.CreateScope
+@inject IServiceProvider ServiceProvider
 
-<PageTitle>Templates</PageTitle>
+<PageTitle>Health Check</PageTitle>
 
-<h1>Form Templates</h1>
+<h2 class="text-2xl font-semibold mb-4">Application Health Check</h2>
 
-<button class="btn btn-primary mb-3" @onclick="AddTemplate">
-    <i class="bi bi-plus-circle"></i> New Template
-</button>
-
-@if (templates == null)
-{
-    <p>Loading...</p>
-}
-else
-{
-    <table class="table table-hover">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Description</th>
-                <th>Created</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var template in templates)
-            {
-                <tr @oncontextmenu:preventDefault 
-                    @oncontextmenu="@(e => ShowContextMenu(e, template.Id)">
-                    <td>@template.Title</td>
-                    <td>@template.Description</td>
-                    <td>@template.CreatedAt.ToString("d")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-@if (showContextMenu)
-{
-    <div class="context-menu shadow" style="position:absolute; left:@contextMenuX; top:@contextMenuY">
-        <button class="dropdown-item" @onclick="EditTemplate">
-            <i class="bi bi-pencil"></i> Edit
-        </button>
-        <button class="dropdown-item text-danger" @onclick="DeleteTemplate">
-            <i class="bi bi-trash"></i> Delete
-        </button>
-    </div>
-}
+<div class="bg-white p-6 rounded-lg shadow-sm">
+    <h3 class="text-xl font-semibold mb-3">Database Connection</h3>
+    @if (dbHealthMessage == null)
+    {
+        <p>Checking database connection...</p>
+    }
+    else
+    {
+        <p class="text-lg @(dbHealthSuccess ? "text-green-600" : "text-red-600")">
+            @dbHealthMessage
+        </p>
+    }
+</div>
 
 @code {
-    private List<Template> templates = new();
-    private bool showContextMenu;
-    private Guid selectedTemplateId;
-    private double contextMenuX, contextMenuY;
-    
-    protected override async Task OnInitializedAsync() 
-        => templates = await TemplateService.GetTemplatesAsync();
-    
-    private void AddTemplate() 
-        => Navigation.NavigateTo("/templates/new");
-    
-    private void ShowContextMenu(MouseEventArgs e, Guid templateId)
+    private string? dbHealthMessage;
+    private bool dbHealthSuccess;
+
+    protected override async Task OnInitializedAsync()
     {
-        selectedTemplateId = templateId;
-        showContextMenu = true;
-        contextMenuX = e.ClientX;
-        contextMenuY = e.ClientY;
+        await CheckDatabaseHealth();
     }
-    
-    private void EditTemplate() 
-        => Navigation.NavigateTo($"/templates/edit/{selectedTemplateId}");
-    
-    private async Task DeleteTemplate()
+
+    private async Task CheckDatabaseHealth()
     {
-        // Implement delete logic
-        showContextMenu = false;
+        try
+        {
+            using (var scope = ServiceProvider.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                await context.Database.CanConnectAsync();
+                dbHealthMessage = "Database connection successful!";
+                dbHealthSuccess = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            dbHealthMessage = $"Database connection failed: {ex.Message}";
+            dbHealthSuccess = false;
+        }
     }
 }
