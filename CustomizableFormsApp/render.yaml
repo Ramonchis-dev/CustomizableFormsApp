@@ -1,13 +1,8 @@
-﻿services:
+services:
   - type: web
     name: customizable-forms-app
-    runtime: docker
-    buildCommand: dotnet publish -c Release -o output
-    startCommand: dotnet output/CustomizableFormsApp.dll
-    envVars:
-      - key: ASPNETCORE_ENVIRONMENT
-        value: Production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: customizableformsdb
-          property: connectionString
+    env: docker
+    plan: free
+    autoDeploy: true
+    branch: main
+    dockerfilePath: CustomizableFormsApp/Dockerfile
