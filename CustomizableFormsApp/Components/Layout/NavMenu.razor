@@ -1,5 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
+@rendermode RenderMode.InteractiveServer
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -34,9 +35,7 @@
                         <span class="bi bi-box-arrow-right-nav-menu" aria-hidden="true"></span> Log out
                     </NavLink>
                 </div>
-
                 <AuthorizeView Roles="Admin" Context="adminContext">
-
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="admin/users">
                             <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> User Management
