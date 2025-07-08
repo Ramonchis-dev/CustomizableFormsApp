@@ -3,6 +3,7 @@
 @rendermode RenderMode.InteractiveServer
 
 <div class="top-row ps-3 navbar navbar-dark">
+    @* navbar-dark should give dark background and light text *@
     <div class="container-fluid">
         <a class="navbar-brand" href="">CustomizableFormsApp</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
@@ -11,11 +12,12 @@
     </div>
 </div>
 
-@* Ensure the 'collapse' class is applied initially if collapseNavMenu is true *@
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="flex-column">
         <div class="nav-item px-3">
+            @* nav-item wraps each link *@
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                @* nav-link styles the actual link *@
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
             </NavLink>
         </div>
@@ -61,10 +63,8 @@
 </div>
 
 @code {
-    // collapseNavMenu is true by default, so it should initially be collapsed.
     private bool collapseNavMenu = true;
 
-    // This correctly applies the "collapse" class if true, making it hidden by default.
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
     private void ToggleNavMenu()

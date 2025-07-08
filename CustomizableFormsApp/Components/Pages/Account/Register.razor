@@ -17,7 +17,6 @@
             <DataAnnotationsValidator />
             <ValidationSummary />
 
-
             <div class="mb-3">
                 <label for="firstName" class="form-label">First Name</label>
                 <InputText id="firstName" @bind-Value="registerModel.FirstName" class="form-control" />
@@ -29,7 +28,6 @@
                 <InputText id="lastName" @bind-Value="registerModel.LastName" class="form-control" />
                 <ValidationMessage For="@(() => registerModel.LastName)" />
             </div>
-            @* --- END ADDITIONS --- *@
 
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
@@ -81,7 +79,7 @@
 
         if (result.Succeeded)
         {
-            Navigation.NavigateTo("/", forceLoad: true); // Redirect to home after successful registration
+            Navigation.NavigateTo("/", forceLoad: true);
         }
         else
         {
