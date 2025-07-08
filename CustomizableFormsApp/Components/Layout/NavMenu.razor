@@ -11,6 +11,7 @@
     </div>
 </div>
 
+@* Ensure the 'collapse' class is applied initially if collapseNavMenu is true *@
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="flex-column">
         <div class="nav-item px-3">
@@ -60,8 +61,10 @@
 </div>
 
 @code {
+    // collapseNavMenu is true by default, so it should initially be collapsed.
     private bool collapseNavMenu = true;
 
+    // This correctly applies the "collapse" class if true, making it hidden by default.
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
     private void ToggleNavMenu()
