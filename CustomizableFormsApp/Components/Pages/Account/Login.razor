@@ -10,7 +10,6 @@
 
 <PageTitle>Log In</PageTitle>
 
-@* REMOVE OR CONVERT THIS COMMENT: // Added for Required, EmailAddress, DataType *@
 
 <div class="card mx-auto mt-5" style="max-width: 400px;">
     <div class="card-header text-center">
@@ -60,23 +59,30 @@
     private async Task HandleLogin()
     {
         errorMessage = null;
+        // Add a console log here to confirm method is hit
+        Console.WriteLine("Attempting login...");
+
         var result = await AuthService.PasswordSignInAsync(loginModel.Email, loginModel.Password, loginModel.RememberMe);
 
         if (result.Succeeded)
         {
+            Console.WriteLine("Login succeeded!");
             Navigation.NavigateTo("/", forceLoad: true); // Force full reload to update auth state
         }
         else if (result.IsLockedOut)
         {
             errorMessage = "Account locked out.";
+            Console.WriteLine("Login failed: Account locked out.");
         }
         else if (result.IsNotAllowed)
         {
             errorMessage = "Login not allowed.";
+            Console.WriteLine("Login failed: Not allowed.");
         }
         else
         {
             errorMessage = "Invalid login attempt.";
+            Console.WriteLine("Login failed: Invalid credentials.");
         }
     }
 
