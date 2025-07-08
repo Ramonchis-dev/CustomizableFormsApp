@@ -3,19 +3,19 @@
 @rendermode RenderMode.InteractiveServer
 
 <div class="top-row ps-3 navbar navbar-dark">
+    @* This class should make text light *@
     <div class="container-fluid">
         <a class="navbar-brand" href="">CustomizableFormsApp</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu"
                 data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                aria-expanded="false" aria-label="Toggle navigation"> @* <--- ENSURE THESE ATTRIBUTES ARE HERE *@
+                aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
     </div>
 </div>
 
-@* The 'collapse' class should be present initially to hide the menu when collapsedNavMenu is true *@
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column navbar-collapse"> @* <--- ADD navbar-collapse CLASS HERE to the nav container *@
+    <nav class="flex-column navbar-collapse">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home

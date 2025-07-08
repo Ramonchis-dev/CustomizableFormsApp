@@ -1,40 +1,6 @@
-/* Example app.css content */
-.sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
-}
+/* In CustomizableFormsApp/wwwroot/css/app.css */
 
-.top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
-    justify-content: flex-end;
-    height: 3.5rem;
-    display: flex;
-    align-items: center;
-}
-
-    .top-row ::deep a, .top-row .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-        text-decoration: none;
-    }
-
-        .top-row ::deep a:hover, .top-row .btn-link:hover {
-            text-decoration: underline;
-        }
-
-    .top-row ::deep .btn-link {
-        color: #000;
-    }
-
-.navbar-brand {
-    font-size: 1.1rem;
-}
-
-.bi {
-    vertical-align: -0.125em;
-    pointer-events: none;
-    fill: currentcolor;
-}
+/* ... (previous CSS rules) ... */
 
 .nav-item {
     font-size: 0.9rem;
@@ -42,7 +8,7 @@
 }
 
     .nav-item ::deep a {
-        color: #d7d7d7;
+        color: #d7d7d7; /* <--- ENSURE THIS IS A LIGHT COLOR, e.g., #FFFFFF for pure white */
         border-radius: 4px;
         height: 3rem;
         display: flex;
@@ -52,59 +18,12 @@
 
         .nav-item ::deep a.active {
             background-color: rgba(255,255,255,0.25);
-            color: white;
+            color: white; /* Ensure active state is white */
         }
 
         .nav-item ::deep a:hover {
             background-color: rgba(255,255,255,0.1);
-            color: white;
+            color: white; /* Ensure hover state is white */
         }
 
-.nav-scrollable {
-    overflow-y: auto;
-}
-
-.content {
-    padding-top: 1.1rem;
-}
-
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
-}
-
-.invalid {
-    outline: 1px solid #e50000;
-}
-
-.validation-message {
-    color: #e50000;
-}
-
-#blazor-error-ui {
-    background: lightyellow;
-    bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-    display: none;
-    left: 0;
-    padding: 0.3rem 1.5rem 0.3rem 0.5rem;
-    position: fixed;
-    width: 100%;
-    z-index: 1000;
-}
-
-    #blazor-error-ui .dismiss {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
-
-.blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0zMiIgaGVpZ2h0PTMyIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3Ln33ub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTYgOEwxNiAxNk04IDE2TDggOE05LjczMzMxIDhMMTQuMjY2NyAxNk0xNC4yNjY3IDhMOS43MzMxMSAxNk03LjUgMy43NUwxNi41IDIwLjI1TDIwLjI1IDE2LjVMMy43NSAxNi41TDIwLjI1IDMuNzVMMTYuNSAzLjc1TDMuNzUgMjAuMjVMMTcuMjUgMjAuMjVMMjAuMjUgMTYuNSIgZmlsbD0iI0ZGRjAwMCIgc3Ryb2tlPSIjRkZGMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+) no-repeat 1rem / 1.8rem, #ff9900;
-    padding: 1rem 1rem 1.1rem 3.7rem;
-    color: white;
-}
-
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
+/* ... (rest of the CSS rules) ... */
