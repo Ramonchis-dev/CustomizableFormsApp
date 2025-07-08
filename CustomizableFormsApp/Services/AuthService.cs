@@ -1,35 +1,22 @@
 ﻿using CustomizableFormsApp.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic; // For List
+using System.Linq; // For LINQ operations
 using System.Security.Claims;
 using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using CustomizableFormsApp.Data; // Ensure this is included for ApplicationDbContext
 
 namespace CustomizableFormsApp.Services
 {
-    public class AuthService
+    public class AuthService(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager) // Inject RoleManager too
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly ApplicationDbContext _context; // Added to get all users
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
+        private readonly RoleManager<IdentityRole> _roleManager = roleManager; // Store RoleManager
 
-        public AuthService(
-            UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager,
-            RoleManager<IdentityRole> roleManager,
-            ApplicationDbContext context) // Inject ApplicationDbContext
+        public async Task<SignInResult> PasswordSignInAsync(string email, string password, bool rememberMe)
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _roleManager = roleManager;
-            _context = context;
-        }
-
-        public async Task<SignInResult> PasswordSignInAsync(string email, string password, bool isPersistent)
-        {
-            return await _signInManager.PasswordSignInAsync(email, password, isPersistent, lockoutOnFailure: false);
+            return await _signInManager.PasswordSignInAsync(email, password, rememberMe, lockoutOnFailure: false);
         }
 
         public async Task<IdentityResult> RegisterUserAsync(string email, string password, string firstName, string lastName)
@@ -39,13 +26,11 @@ namespace CustomizableFormsApp.Services
 
             if (result.Succeeded)
             {
-                // Assign default role if needed, e.g., "User"
-                if (!await _roleManager.RoleExistsAsync("User"))
-                {
-                    await _roleManager.CreateAsync(new IdentityRole("User"));
-                }
+                // Assign "User" role by default to new registrations
                 await _userManager.AddToRoleAsync(user, "User");
+                await _signInManager.SignInAsync(user, isPersistent: false);
             }
+
             return result;
         }
 
@@ -54,9 +39,27 @@ namespace CustomizableFormsApp.Services
             await _signInManager.SignOutAsync();
         }
 
-        public async Task<ApplicationUser?> GetCurrentUserAsync(ClaimsPrincipal principal)
+        // --- NEW METHODS ---
+
+        public async Task<ApplicationUser?> GetCurrentUserAsync(ClaimsPrincipal userPrincipal)
         {
-            return await _userManager.GetUserAsync(principal);
+            return await _userManager.GetUserAsync(userPrincipal);
+        }
+
+        public async Task<IdentityResult> UpdateProfileAsync(ApplicationUser user)
+        {
+            var existingUser = await _userManager.FindByIdAsync(user.Id);
+            if (existingUser == null)
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "User not found." });
+            }
+
+            existingUser.FirstName = user.FirstName;
+            existingUser.LastName = user.LastName;
+            existingUser.Email = user.Email;
+            existingUser.UserName = user.Email; // Keep UserName and Email in sync for Identity
+
+            return await _userManager.UpdateAsync(existingUser);
         }
 
         public async Task<List<ApplicationUser>> GetAllUsersAsync()
@@ -64,35 +67,38 @@ namespace CustomizableFormsApp.Services
             return await _userManager.Users.ToListAsync();
         }
 
-        public async Task<IdentityResult> UpdateProfileAsync(string userId, string firstName, string lastName)
+        public async Task<IList<string>> GetUserRolesAsync(ApplicationUser user)
+        {
+            return await _userManager.GetRolesAsync(user);
+        }
+
+        public async Task<IdentityResult> UpdateUserRolesAsync(ApplicationUser user, IEnumerable<string> newRoles)
+        {
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            var rolesToAdd = newRoles.Except(currentRoles);
+            var rolesToRemove = currentRoles.Except(newRoles);
+
+            var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+            if (!addResult.Succeeded) return addResult;
+
+            var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+            return removeResult;
+        }
+
+        public async Task<List<IdentityRole>> GetAllRolesAsync()
+        {
+            return await _roleManager.Roles.ToListAsync();
+        }
+
+        public async Task<IdentityResult> DeleteUserAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 return IdentityResult.Failed(new IdentityError { Description = "User not found." });
             }
-
-            user.FirstName = firstName;
-            user.LastName = lastName;
-            return await _userManager.UpdateAsync(user);
+            return await _userManager.DeleteAsync(user);
         }
 
-        // Method to get a user by ID
-        public async Task<ApplicationUser?> GetUserByIdAsync(string userId)
-        {
-            return await _userManager.FindByIdAsync(userId);
-        }
-
-        // Method to get user roles
-        public async Task<IList<string>> GetUserRolesAsync(ApplicationUser user)
-        {
-            return await _userManager.GetRolesAsync(user);
-        }
-
-        // Method to check if a user is in a specific role
-        public async Task<bool> IsUserInRoleAsync(ApplicationUser user, string roleName)
-        {
-            return await _userManager.IsInRoleAsync(user, roleName);
-        }
     }
 }

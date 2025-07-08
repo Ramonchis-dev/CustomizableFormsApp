@@ -1,114 +1,103 @@
 ﻿@page "/account/profile"
 @using CustomizableFormsApp.Components.Layout
-@using CustomizableFormsApp.Models // For ApplicationUser
-@using Microsoft.AspNetCore.Components.Authorization // For AuthenticationStateProvider
-@using System.ComponentModel.DataAnnotations // Added for Required, MaxLength
-@using System.Security.Claims // Added for ClaimTypes
+@using CustomizableFormsApp.Models
+@using CustomizableFormsApp.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
 @inject AuthService AuthService
-@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@layout MainLayout
 @rendermode RenderMode.InteractiveServer
 
-<PageTitle>My Profile</PageTitle>
+<PageTitle>Profile</PageTitle>
 
-<EditForm Model="@profileModel" OnValidSubmit="SaveProfile">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+<AuthorizeView>
+    <Authorized Context="authContext">
+        @if (user == null)
+        {
+            <p>Loading profile...</p>
+        }
+        else
+        {
+            <h2 class="text-2xl font-semibold mb-4">User Profile</h2>
 
-    <div class="card bg-white p-6 rounded-lg shadow-sm">
-        <div class="card-header border-b pb-4 mb-4">
-            <h3 class="text-2xl font-semibold text-gray-800">Profile Information</h3>
-        </div>
-        <div class="card-body">
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <InputText @bind-Value="profileModel.Email" class="form-input block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" readonly />
-            </div>
+            <EditForm Model="@user" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
 
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                <InputText @bind-Value="profileModel.FirstName" class="form-input block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" />
-                <ValidationMessage For="@(() => profileModel.FirstName)" />
-            </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">First Name</label>
+                    <InputText @bind-Value="user.FirstName" class="form-input mt-1 block w-full rounded-md border-gray-300" />
+                    <ValidationMessage For="@(() => user.FirstName)" />
+                </div>
 
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                <InputText @bind-Value="profileModel.LastName" class="form-input block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" />
-                <ValidationMessage For="@(() => profileModel.LastName)" />
-            </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                    <InputText @bind-Value="user.LastName" class="form-input mt-1 block w-full rounded-md border-gray-300" />
+                    <ValidationMessage For="@(() => user.LastName)" />
+                </div>
 
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <InputText @bind-Value="profileModel.PhoneNumber" class="form-input block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" />
-            </div>
-        </div>
-        <div class="card-footer pt-4 border-t mt-4 flex justify-end">
-            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Save Changes</button>
-            <button type="button" class="ml-3 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" @onclick="Cancel">Cancel</button>
-        </div>
-    </div>
-</EditForm>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <InputText @bind-Value="user.Email" class="form-input mt-1 block w-full rounded-md border-gray-300" />
+                    <ValidationMessage For="@(() => user.Email)" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(message))
+                {
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                        <span class="block sm:inline">@message</span>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                        <span class="block sm:inline">@errorMessage</span>
+                    </div>
+                }
+
+                <div class="mt-6 flex justify-end">
+                    <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Update Profile
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>You must be logged in to view your profile.</p>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
-    private ProfileModel profileModel = new();
-    private ApplicationUser? currentUser;
+    private ApplicationUser? user;
+    private string? message;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var userPrincipal = authState.User;
+        user = await AuthService.GetCurrentUserAsync(authState.User);
+    }
 
-        if (userPrincipal.Identity?.IsAuthenticated == true)
+    private async Task HandleValidSubmit()
+    {
+        if (user == null) return;
+
+        message = null;
+        errorMessage = null;
+
+        var result = await AuthService.UpdateProfileAsync(user);
+
+        if (result.Succeeded)
         {
-            currentUser = await AuthService.GetCurrentUserAsync(userPrincipal); // Pass the ClaimsPrincipal
-            if (currentUser != null)
-            {
-                profileModel = new ProfileModel
-                {
-                    Email = currentUser.Email ?? string.Empty,
-                    FirstName = currentUser.FirstName ?? string.Empty,
-                    LastName = currentUser.LastName ?? string.Empty,
-                    PhoneNumber = currentUser.PhoneNumber
-                };
-            }
+            message = "Profile updated successfully!";
         }
-    }
-
-    private async Task SaveProfile()
-    {
-        if (currentUser != null)
+        else
         {
-            var result = await AuthService.UpdateProfileAsync(
-                currentUser.Id,
-                profileModel.FirstName,
-                profileModel.LastName
-            );
-
-            if (result.Succeeded)
-            {
-                Navigation.NavigateTo("/", forceLoad: true);
-            }
-            else
-            {
-                Console.WriteLine($"Profile update failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-            }
+            errorMessage = string.Join(" ", result.Errors.Select(e => e.Description));
         }
-    }
-
-    private void Cancel()
-    {
-        Navigation.NavigateTo("/");
-    }
-
-    public class ProfileModel
-    {
-        public string Email { get; set; } = string.Empty;
-        [Required(ErrorMessage = "First Name is required.")]
-        [MaxLength(100)]
-        public string FirstName { get; set; } = string.Empty;
-        [Required(ErrorMessage = "Last Name is required.")]
-        [MaxLength(100)]
-        public string LastName { get; set; } = string.Empty;
-        public string? PhoneNumber { get; set; }
     }
 }

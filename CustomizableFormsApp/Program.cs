@@ -9,8 +9,8 @@ using Microsoft.AspNetCore.Components.Authorization;
 using CustomizableFormsApp.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
-using System; // Required for Uri
-using Microsoft.Extensions.Logging; // Required for ILogger
+using System;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,17 +21,26 @@ builder.Services.AddRazorComponents()
 
 // Configure AuthenticationStateProvider
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddAuthorizationCore();
+// Old: builder.Services.AddAuthorizationCore(); // Removed this line
 
-// --- START: Database Connection String Configuration ---
+// --- NEW: Use AddAuthorizationBuilder for modern authorization configuration ---
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"))
+    .AddPolicy("UserPolicy", policy => policy.RequireRole("User"))
+    .AddPolicy("TemplateOwner", policy =>
+        policy.Requirements.Add(new OperationAuthorizationRequirement { Name = "Update" }));
+// --- END NEW ---
+
+builder.Services.AddSingleton<IAuthorizationHandler, TemplateOwnerHandler>();
+
+
+// --- START: Database Connection String Configuration (remains the same) ---
 string connectionString;
 
-// Prioritize DATABASE_URL environment variable from Render
 var envConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
 if (!string.IsNullOrEmpty(envConnectionString))
 {
-    // If DATABASE_URL is present, attempt to parse it as a postgresql:// URI
     if (envConnectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
     {
         try
@@ -39,7 +48,7 @@ if (!string.IsNullOrEmpty(envConnectionString))
             var uri = new Uri(envConnectionString);
             var userInfo = uri.UserInfo.Split(':');
 
-            var port = uri.Port == -1 ? 5432 : uri.Port; // Use 5432 if port is -1
+            var port = uri.Port == -1 ? 5432 : uri.Port;
 
             connectionString =
                 $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.Trim('/')};" +
@@ -56,8 +65,6 @@ if (!string.IsNullOrEmpty(envConnectionString))
     }
     else
     {
-        // If DATABASE_URL is set but NOT a postgresql:// URI, assume it's a direct connection string.
-        // Ensure SSL parameters are added if not already present, as Render requires them.
         connectionString = envConnectionString;
         if (!connectionString.Contains("SSL Mode=Require", StringComparison.OrdinalIgnoreCase))
         {
@@ -75,7 +82,6 @@ if (!string.IsNullOrEmpty(envConnectionString))
 }
 else
 {
-    // Fallback to DefaultConnection from appsettings.json for local development
     var appSettingsConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     if (!string.IsNullOrEmpty(appSettingsConnectionString))
     {
@@ -83,7 +89,6 @@ else
         builder.Logging.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>()
             .CreateLogger("Program").LogWarning("DATABASE_URL environment variable is not set or empty. Falling back to DefaultConnection from appsettings.json.");
 
-        // Ensure SSL parameters are added if needed for local testing against Render-like setup
         if (!connectionString.Contains("SSL Mode=Require", StringComparison.OrdinalIgnoreCase))
         {
             connectionString += ";SSL Mode=Require";
@@ -103,7 +108,6 @@ else
     }
 }
 
-// Log the final connection string (unmasked for debugging)
 builder.Logging.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>()
     .CreateLogger("Program").LogInformation("Final connection string being used (UNMASKED): {ConnectionString}", connectionString);
 
@@ -117,15 +121,6 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.S
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("UserPolicy", policy => policy.RequireRole("User"));
-    options.AddPolicy("TemplateOwner", policy =>
-        policy.Requirements.Add(new OperationAuthorizationRequirement { Name = "Update" }));
-});
-
-builder.Services.AddSingleton<IAuthorizationHandler, TemplateOwnerHandler>();
 
 // Register your custom services
 builder.Services.AddScoped<TemplateService>();
@@ -150,12 +145,10 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode();
-
-
+// .AddAdditionalAssemblies(typeof(CustomizableFormsApp.Client._Imports).Assembly);
 
 // Apply migrations and seed initial data on startup
 using (var scope = app.Services.CreateScope())

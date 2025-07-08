@@ -3,6 +3,7 @@
 @using CustomizableFormsApp.Models // For ApplicationUser
 @using CustomizableFormsApp.Services // For AuthService
 @using System.Linq // For Any()
+@using Microsoft.AspNetCore.Identity
 @layout MainLayout
 @attribute [Authorize(Roles = "Admin")]
 @inject AuthService AuthService
@@ -10,87 +11,161 @@
 
 <PageTitle>User Management</PageTitle>
 
-<h2 class="text-2xl font-semibold mb-4">User Management</h2>
+@* FIX for RZ9999: Explicitly name the context for this AuthorizeView *@
+<AuthorizeView Roles="Admin" Context="adminAuthContext">
+    @* <--- ADD Context="adminAuthContext" *@
+    <Authorized>
+        <h2 class="text-2xl font-semibold mb-4">User Management</h2>
 
-@if (users == null)
-{
-    <p>Loading users...</p>
-}
-else
-{
-    <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
-        <thead class="bg-gray-100">
-            <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-            @foreach (var user in users)
+        @if (users == null)
+        {
+            <p>Loading users...</p>
+        }
+        else
+        {
+            <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Name</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Name</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach (var user in users)
+                    {
+                        <tr>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@user.Email</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@user.FirstName</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@user.LastName</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                @if (userRoles.ContainsKey(user.Id))
+                                {
+                                    <span>@string.Join(", ", userRoles[user.Id])</span>
+                                }
+                                else
+                                {
+                                    <span>Loading...</span>
+                                }
+                            </td>
+                            <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                                <button class="text-blue-600 hover:text-blue-900 mr-2" @onclick="() => EditRoles(user)">Edit Roles</button>
+                                <button class="text-red-600 hover:text-red-900" @onclick="() => DeleteUser(user.Id)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (showRoleEditModal)
             {
-                <tr>
-                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@user.Email</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@user.FullName</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@string.Join(", ", user.Roles)</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                        @if (user.IsActive)
+                <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+                    <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+                        <h3 class="text-xl font-semibold mb-4">Edit Roles for @editingUser?.Email</h3>
+                        @if (allRoles != null)
                         {
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                            @foreach (var role in allRoles)
+                            {
+                                <div class="flex items-center mb-2">
+                                    <input type="checkbox"
+                                           id="@role.Name"
+                                           checked="@selectedRoles.Contains(role.Name)"
+                                           @onchange="e => ToggleRole(role.Name, (bool)e.Value!)"
+                                           class="form-checkbox h-4 w-4 text-indigo-600 rounded" />
+                                    <label for="@role.Name" class="ml-2 text-sm text-gray-700">@role.Name</label>
+                                </div>
+                            }
                         }
-                        else
-                        {
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Inactive</span>
-                        }
-                    </td>
-                    <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
-                        <button class="text-indigo-600 hover:text-indigo-900"
-                                @onclick="() => EditUser(user.Id)">
-                            Edit
-                        </button>
-                    </td>
-                </tr>
+                        <div class="mt-4 flex justify-end">
+                            <button class="px-4 py-2 bg-gray-200 rounded-md mr-2" @onclick="CancelRoleEdit">Cancel</button>
+                            <button class="px-4 py-2 bg-indigo-600 text-white rounded-md" @onclick="SaveRoles">Save</button>
+                        </div>
+                    </div>
+                </div>
             }
-        </tbody>
-    </table>
-}
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>You must be an administrator to access user management.</p>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
-    private List<UserDto> users = new();
+    private List<ApplicationUser>? users;
+    private Dictionary<string, IList<string>> userRoles = new();
+    private bool showRoleEditModal = false;
+    private ApplicationUser? editingUser;
+    private List<string> selectedRoles = new();
+    private List<IdentityRole>? allRoles;
 
     protected override async Task OnInitializedAsync()
     {
-        var applicationUsers = await AuthService.GetAllUsersAsync();
+        await LoadUsersAndRoles();
+    }
 
-        users = new List<UserDto>();
-        foreach (var appUser in applicationUsers)
+    private async Task LoadUsersAndRoles()
+    {
+        users = await AuthService.GetAllUsersAsync();
+        if (users != null)
         {
-            var userDto = new UserDto
+            userRoles.Clear();
+            foreach (var user in users)
             {
-                Id = appUser.Id,
-                Email = appUser.Email ?? "N/A",
-                FullName = appUser.FullName, // Accessing the FullName property from ApplicationUser
-                IsActive = true // Placeholder: You might want to check appUser.LockoutEnd for actual active status
-            };
-            userDto.Roles = (await AuthService.GetUserRolesAsync(appUser)).ToList();
-            users.Add(userDto);
+                userRoles[user.Id] = await AuthService.GetUserRolesAsync(user);
+            }
+        }
+        allRoles = await AuthService.GetAllRolesAsync();
+    }
+
+    private void EditRoles(ApplicationUser user)
+    {
+        editingUser = user;
+        selectedRoles = userRoles[user.Id].ToList();
+        showRoleEditModal = true;
+    }
+
+    private void ToggleRole(string roleName, bool isChecked)
+    {
+        if (isChecked && !selectedRoles.Contains(roleName))
+        {
+            selectedRoles.Add(roleName);
+        }
+        else if (!isChecked && selectedRoles.Contains(roleName))
+        {
+            selectedRoles.Remove(roleName);
         }
     }
 
-    private void EditUser(string userId)
+    private async Task SaveRoles()
     {
-        // Navigation to user edit page would go here
-        // Example: Navigation.NavigateTo($"/admin/users/edit/{userId}");
+        if (editingUser != null)
+        {
+            await AuthService.UpdateUserRolesAsync(editingUser, selectedRoles);
+            await LoadUsersAndRoles(); // Reload to reflect changes
+        }
+        showRoleEditModal = false;
     }
 
-    public class UserDto
+    private void CancelRoleEdit()
     {
-        public string Id { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string FullName { get; set; } = string.Empty;
-        public List<string> Roles { get; set; } = new();
-        public bool IsActive { get; set; }
+        showRoleEditModal = false;
+        editingUser = null;
+        selectedRoles.Clear();
+    }
+
+    private async Task DeleteUser(string userId)
+    {
+        var result = await AuthService.DeleteUserAsync(userId);
+        if (result.Succeeded)
+        {
+            await LoadUsersAndRoles();
+        }
+        else
+        {
+            // Handle error, e.g., display a message
+            Console.WriteLine($"Error deleting user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+        }
     }
 }
