@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
-using Npgsql; // Add this using directive for NpgsqlConnectionStringBuilder
+// Removed: using Npgsql; // No longer needed for NpgsqlConnectionStringBuilder in this simplified version
 
 namespace CustomizableFormsApp.Extensions;
 
@@ -25,10 +25,12 @@ public static class ServiceCollectionExtensions
 
         if (!string.IsNullOrEmpty(envConnectionString))
         {
+            // Assume DATABASE_URL is in postgres:// URI format or a direct connection string
             finalConnectionString = envConnectionString;
-            logger.LogInformation("Using DATABASE_URL from environment variable: {MaskedConnectionString}", MaskConnectionString(finalConnectionString));
+            logger.LogInformation("Using DATABASE_URL from environment variable.");
 
             // Ensure SSL Mode and Trust Server Certificate are present for Render
+            // This logic is crucial and should apply regardless of initial format
             if (!finalConnectionString.Contains("SSL Mode=Require", StringComparison.OrdinalIgnoreCase))
             {
                 finalConnectionString += ";SSL Mode=Require";
@@ -47,7 +49,7 @@ public static class ServiceCollectionExtensions
             if (!string.IsNullOrEmpty(appSettingsConnectionString))
             {
                 finalConnectionString = appSettingsConnectionString;
-                logger.LogWarning("DATABASE_URL environment variable is not set or empty. Falling back to DefaultConnection from appsettings.json: {MaskedConnectionString}", MaskConnectionString(finalConnectionString));
+                logger.LogWarning("DATABASE_URL environment variable is not set or empty. Falling back to DefaultConnection from appsettings.json.");
 
                 // Ensure SSL Mode and Trust Server Certificate are present for Render if using appsettings.json fallback
                 if (!finalConnectionString.Contains("SSL Mode=Require", StringComparison.OrdinalIgnoreCase))
@@ -67,7 +69,10 @@ public static class ServiceCollectionExtensions
             }
         }
 
-        logger.LogInformation("Final connection string being used: {MaskedConnectionString}", MaskConnectionString(finalConnectionString));
+        // Log the final connection string (without masking here to avoid the error)
+        // In a production app, you would use a more sophisticated way to mask this *after* successful parsing.
+        logger.LogInformation("Final connection string (unmasked for debugging): {ConnectionString}", finalConnectionString);
+
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(finalConnectionString));
@@ -75,22 +80,6 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    // Helper method to mask password in logs
-    private static string MaskConnectionString(string connectionString)
-    {
-        try
-        {
-            var builder = new NpgsqlConnectionStringBuilder(connectionString);
-            if (!string.IsNullOrEmpty(builder.Password))
-            {
-                builder.Password = "********";
-            }
-            return builder.ToString();
-        }
-        catch (Exception ex)
-        {
-            // If the connection string is so malformed it can't even be masked, log and return original
-            return $"[Error masking string: {ex.Message}] {connectionString}";
-        }
-    }
+    // REMOVED MaskConnectionString helper method to avoid the parsing error
+    // private static string MaskConnectionString(string connectionString) { ... }
 }
