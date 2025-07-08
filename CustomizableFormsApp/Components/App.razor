@@ -1,4 +1,7 @@
-﻿<!DOCTYPE html>
+﻿@using CustomizableFormsApp.Components.Layout
+@using Microsoft.AspNetCore.Components.Web
+
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -16,18 +19,21 @@
     <!-- Custom CSS (should be in wwwroot/css/app.css) -->
     <link href="css/app.css" rel="stylesheet" />
 
-    <!-- HeadOutlet is where Blazor components can add content to the <head> -->
-    <HeadOutlet /> @* Removed @rendermode="RenderMode.Server" *@
+    @* Favicon line removed as file does not exist *@
+    @* <link rel="icon" type="image/png" href="favicon.png" /> *@
+
+    <!-- HeadOutlet is where Blazor components can add content to the <head> dynamically -->
+    <HeadOutlet />
 </head>
 
 <body>
     <!-- This is where your Blazor Router and components will be rendered -->
-    <Routes /> @* Removed @rendermode="RenderMode.InteractiveServer" *@
+    <Routes />
 
-    <!-- Blazor script -->
+    <!-- Blazor script - MUST be loaded AFTER the Blazor app is initialized -->
     <script src="_framework/blazor.web.js"></script>
 
-    <!-- Bootstrap JS Bundle with Popper from CDN -->
+    <!-- Bootstrap JS Bundle with Popper from CDN - MUST be loaded AFTER Blazor script -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
