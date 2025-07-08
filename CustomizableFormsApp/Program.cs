@@ -10,7 +10,7 @@ using CustomizableFormsApp.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using System; // Required for Uri
-// Removed: using Npgsql; // No longer needed as NpgsqlConnectionStringBuilder is not used for masking
+using Microsoft.Extensions.Logging; // Required for ILogger
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,16 +31,20 @@ var envConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
 if (!string.IsNullOrEmpty(envConnectionString))
 {
-    // If DATABASE_URL is present, attempt to parse it as a postgres:// URI
-    if (envConnectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase)) // Use postgresql:// for consistency
+    // If DATABASE_URL is present, attempt to parse it as a postgresql:// URI
+    if (envConnectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
     {
         try
         {
             var uri = new Uri(envConnectionString);
             var userInfo = uri.UserInfo.Split(':');
 
+            // --- FIX: Handle default port if not specified in URI ---
+            var port = uri.Port == -1 ? 5432 : uri.Port; // Use 5432 if port is -1
+            // --- END FIX ---
+
             connectionString =
-                $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};" +
+                $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.Trim('/')};" +
                 $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
             builder.Logging.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>()
                 .CreateLogger("Program").LogInformation("Successfully parsed DATABASE_URL (URI format).");
@@ -101,8 +105,7 @@ else
     }
 }
 
-// TEMPORARILY LOGGING UNMASKED CONNECTION STRING FOR DEBUGGING
-// In a production app, you would use a more sophisticated way to mask this *after* successful parsing.
+// Log the final connection string (unmasked for debugging)
 builder.Logging.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>()
     .CreateLogger("Program").LogInformation("Final connection string being used (UNMASKED): {ConnectionString}", connectionString);
 
@@ -152,6 +155,7 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode();
+
 
 // Apply migrations and seed initial data on startup
 using (var scope = app.Services.CreateScope())
