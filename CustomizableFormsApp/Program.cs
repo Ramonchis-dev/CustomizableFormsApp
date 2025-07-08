@@ -10,7 +10,7 @@ using CustomizableFormsApp.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using System; // Required for Uri
-using Npgsql; // Required for NpgsqlConnectionStringBuilder
+// Removed: using Npgsql; // No longer needed as NpgsqlConnectionStringBuilder is not used for masking
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,7 +32,7 @@ var envConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(envConnectionString))
 {
     // If DATABASE_URL is present, attempt to parse it as a postgres:// URI
-    if (envConnectionString.StartsWith("postgres://"))
+    if (envConnectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase)) // Use postgresql:// for consistency
     {
         try
         {
@@ -54,7 +54,7 @@ if (!string.IsNullOrEmpty(envConnectionString))
     }
     else
     {
-        // If DATABASE_URL is set but NOT a postgres:// URI, assume it's a direct connection string.
+        // If DATABASE_URL is set but NOT a postgresql:// URI, assume it's a direct connection string.
         // Ensure SSL parameters are added if not already present, as Render requires them.
         connectionString = envConnectionString;
         if (!connectionString.Contains("SSL Mode=Require", StringComparison.OrdinalIgnoreCase))
@@ -101,8 +101,10 @@ else
     }
 }
 
+// TEMPORARILY LOGGING UNMASKED CONNECTION STRING FOR DEBUGGING
+// In a production app, you would use a more sophisticated way to mask this *after* successful parsing.
 builder.Logging.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>()
-    .CreateLogger("Program").LogInformation("Final connection string being used: {ConnectionString}", connectionString.Contains("Password") ? connectionString.Replace(new Uri(connectionString.Split(';')[0]).UserInfo.Split(':')[1], "********") : connectionString);
+    .CreateLogger("Program").LogInformation("Final connection string being used (UNMASKED): {ConnectionString}", connectionString);
 
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -150,8 +152,6 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode();
-    // If you do NOT have a CustomizableFormsApp.Client project, ensure this line is commented out:
-    // .AddAdditionalAssemblies(typeof(CustomizableFormsApp.Client._Imports).Assembly);
 
 // Apply migrations and seed initial data on startup
 using (var scope = app.Services.CreateScope())
