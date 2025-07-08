@@ -15,6 +15,11 @@ using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Get the logger factory once and use it throughout the startup
+var loggerFactory = builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>();
+var startupLogger = loggerFactory.CreateLogger("ProgramStartup");
+
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -32,10 +37,8 @@ builder.Services.AddAuthorizationBuilder()
 builder.Services.AddSingleton<IAuthorizationHandler, TemplateOwnerHandler>();
 
 
-// --- START: Database Connection String Configuration (Refactored Logging) ---
+// --- START: Database Connection String Configuration ---
 string connectionString;
-var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>()
-    .CreateLogger("ProgramStartup"); // Get logger once at the top of this block
 
 // Prioritize DATABASE_URL environment variable from Render
 var envConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
@@ -54,11 +57,11 @@ if (!string.IsNullOrEmpty(envConnectionString))
             connectionString =
                 $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.Trim('/')};" +
                 $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
-            logger.LogInformation("Successfully parsed DATABASE_URL (URI format).");
+            startupLogger.LogInformation("Successfully parsed DATABASE_URL (URI format)."); // Use startupLogger
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to parse DATABASE_URL (URI format). Raw string: {RawConnectionString}", envConnectionString);
+            startupLogger.LogError(ex, "Failed to parse DATABASE_URL (URI format). Raw string: {RawConnectionString}", envConnectionString); // Use startupLogger
             throw new InvalidOperationException("Failed to parse DATABASE_URL environment variable as a PostgreSQL URI.", ex);
         }
     }
@@ -68,12 +71,12 @@ if (!string.IsNullOrEmpty(envConnectionString))
         if (!connectionString.Contains("SSL Mode=Require", StringComparison.OrdinalIgnoreCase))
         {
             connectionString += ";SSL Mode=Require";
-            logger.LogWarning("DATABASE_URL is not a URI. Added 'SSL Mode=Require'.");
+            startupLogger.LogWarning("DATABASE_URL is not a URI. Added 'SSL Mode=Require'."); // Use startupLogger
         }
         if (!connectionString.Contains("Trust Server Certificate=true", StringComparison.OrdinalIgnoreCase))
         {
             connectionString += ";Trust Server Certificate=true";
-            logger.LogWarning("DATABASE_URL is not a URI. Added 'Trust Server Certificate=true'.");
+            startupLogger.LogWarning("DATABASE_URL is not a URI. Added 'Trust Server Certificate=true'."); // Use startupLogger
         }
     }
 }
@@ -83,17 +86,17 @@ else
     if (!string.IsNullOrEmpty(appSettingsConnectionString))
     {
         connectionString = appSettingsConnectionString;
-        logger.LogWarning("DATABASE_URL environment variable is not set or empty. Falling back to DefaultConnection from appsettings.json.");
+        startupLogger.LogWarning("DATABASE_URL environment variable is not set or empty. Falling back to DefaultConnection from appsettings.json."); // Use startupLogger
 
         if (!connectionString.Contains("SSL Mode=Require", StringComparison.OrdinalIgnoreCase))
         {
             connectionString += ";SSL Mode=Require";
-            logger.LogWarning("Added 'SSL Mode=Require' to appsettings.json fallback connection string.");
+            startupLogger.LogWarning("Added 'SSL Mode=Require' to appsettings.json fallback connection string."); // Use startupLogger
         }
         if (!connectionString.Contains("Trust Server Certificate=true", StringComparison.OrdinalIgnoreCase))
         {
             connectionString += ";Trust Server Certificate=true";
-            logger.LogWarning("Added 'Trust Server Certificate=true' to appsettings.json fallback connection string.");
+            startupLogger.LogWarning("Added 'Trust Server Certificate=true' to appsettings.json fallback connection string."); // Use startupLogger
         }
     }
     else
@@ -103,14 +106,9 @@ else
 }
 
 // Log the final connection string (unmasked for debugging)
-logger.LogInformation("Final connection string being used (UNMASKED): {ConnectionString}", connectionString);
+startupLogger.LogInformation("Final connection string being used (UNMASKED): {ConnectionString}", connectionString); // Use startupLogger
 
-// --- CRITICAL: REGISTER ApplicationDbContext HERE, BEFORE Identity and other services ---
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
-// --- END CRITICAL ---
-
-// --- END: Database Connection String Configuration ---
+// ... (rest of the Program.cs file, unchanged from here) ...
 
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>

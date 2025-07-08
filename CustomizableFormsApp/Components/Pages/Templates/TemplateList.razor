@@ -2,7 +2,7 @@
 @using CustomizableFormsApp.Models
 @using CustomizableFormsApp.Services
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Components.Web // Ensure this is present
+@using Microsoft.AspNetCore.Components.Web
 @using System.Linq
 @using CustomizableFormsApp.Components.Layout
 @inject TemplateService TemplateService
@@ -13,81 +13,75 @@
 
 <PageTitle>Templates</PageTitle>
 
-@* FIX for RZ9999: Explicitly name the context for this AuthorizeView *@
-<AuthorizeView Roles="Admin" Context="adminTemplateContext"> @* <--- ADD Context="adminTemplateContext" *@
-    <h2 class="text-2xl font-semibold mb-4">Form Templates</h2>
+@* Ensure this AuthorizeView wraps the entire content that needs authorization *@
+<AuthorizeView Roles="Admin" Context="adminTemplateContext">
+    <Authorized>
+        @* This is the content for authorized users (admins in this case) *@
+        <h2 class="text-2xl font-semibold mb-4">Form Templates</h2>
 
-    <div class="mb-4">
-        <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                @onclick="CreateNewTemplate">
-            + Create New Template
-        </button>
-    </div>
-
-    @if (templates == null)
-    {
-        <p>Loading templates...</p>
-    }
-    else if (!templates.Any())
-    {
-        <p>No templates created yet. Click "Create New Template" to get started!</p>
-    }
-    else
-    {
-        <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
-            <thead class="bg-gray-100">
-                <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                @foreach (var template in templates)
-                {
-                    <tr class="hover:bg-gray-50" @oncontextmenu="e => ShowContextMenu(e, template.TemplateId)" @oncontextmenu:preventDefault>
-                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@template.Title</td>
-                        <td class="px-4 py-2 text-sm text-gray-900">@template.Description</td>
-                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@template.Author?.FullName</td>
-                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@template.CreatedAt.ToString("d")</td>
-                        <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
-                            <button class="text-indigo-600 hover:text-indigo-900 mr-2" @onclick="() => ViewTemplate(template.TemplateId)">View</button>
-                            @* This inner AuthorizeView is the source of the conflict.
-                               It needs its own context name if its parent is also an AuthorizeView.
-                               However, based on the screenshot, it looks like the whole TemplateList.razor
-                               is wrapped in a single AuthorizeView. So we can remove this inner one.
-                               Let's assume the outer AuthorizeView is sufficient for admin actions. *@
-                            @* <AuthorizeView Roles="Admin">
-                                <button class="text-blue-600 hover:text-blue-900 mr-2" @onclick="() => EditTemplate(template.TemplateId)">Edit</button>
-                                <button class="text-red-600 hover:text-red-900" @onclick="() => DeleteTemplate(template.TemplateId)">Delete</button>
-                            </AuthorizeView> *@
-                            @* Instead, rely on the outer AuthorizeView for Admin roles for these buttons *@
-                            @if (adminTemplateContext.User.IsInRole("Admin"))
-                            {
-                                <button class="text-blue-600 hover:text-blue-900 mr-2" @onclick="() => EditTemplate(template.TemplateId)">Edit</button>
-                                <button class="text-red-600 hover:text-red-900" @onclick="() => DeleteTemplate(template.TemplateId)">Delete</button>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-
-    @if (showContextMenu)
-    {
-        <div class="absolute bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10"
-             style="left: @(contextMenuX)px; top: @(contextMenuY)px;">
-            <button class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" @onclick="() => EditTemplate(selectedTemplateId)">Edit Template</button>
-            <button class="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50" @onclick="() => DeleteTemplate(selectedTemplateId)">Delete Template</button>
+        <div class="mb-4">
+            <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    @onclick="CreateNewTemplate">
+                + Create New Template
+            </button>
         </div>
-    }
+
+        @if (templates == null)
+        {
+            <p>Loading templates...</p>
+        }
+        else if (!templates.Any())
+        {
+            <p>No templates created yet. Click "Create New Template" to get started!</p>
+        }
+        else
+        {
+            <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach (var template in templates)
+                    {
+                        <tr class="hover:bg-gray-50" @oncontextmenu="e => ShowContextMenu(e, template.TemplateId)" @oncontextmenu:preventDefault>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@template.Title</td>
+                            <td class="px-4 py-2 text-sm text-gray-900">@template.Description</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@template.Author?.FullName</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">@template.CreatedAt.ToString("d")</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                                <button class="text-indigo-600 hover:text-indigo-900 mr-2" @onclick="() => ViewTemplate(template.TemplateId)">View</button>
+                                @if (adminTemplateContext.User.IsInRole("Admin"))
+                                {
+                                    <button class="text-blue-600 hover:text-blue-900 mr-2" @onclick="() => EditTemplate(template.TemplateId)">Edit</button>
+                                    <button class="text-red-600 hover:text-red-900" @onclick="() => DeleteTemplate(template.TemplateId)">Delete</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (showContextMenu)
+        {
+            <div class="absolute bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10"
+                 style="left: @(contextMenuX)px; top: @(contextMenuY)px;">
+                <button class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" @onclick="() => EditTemplate(selectedTemplateId)">Edit Template</button>
+                <button class="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50" @onclick="() => DeleteTemplate(selectedTemplateId)">Delete Template</button>
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        @* <--- This is the correct placement for NotAuthorized *@
+        <p>You must be logged in to view templates.</p>
+    </NotAuthorized>
 </AuthorizeView>
-<NotAuthorized>
-    <p>You must be logged in to view templates.</p>
-</NotAuthorized>
 
 @code {
     private List<Template>? templates;

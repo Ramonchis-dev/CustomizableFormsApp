@@ -128,11 +128,12 @@
 
     private void ToggleRole(string roleName, bool isChecked)
     {
-        if (isChecked && !selectedRoles.Contains(roleName))
+        // Add null-forgiving operator or null check
+        if (isChecked && !selectedRoles.Contains(roleName!))
         {
             selectedRoles.Add(roleName);
         }
-        else if (!isChecked && selectedRoles.Contains(roleName))
+        else if (!isChecked && selectedRoles.Contains(roleName!))
         {
             selectedRoles.Remove(roleName);
         }
