@@ -13,7 +13,8 @@
         <h3 class="mb-0">Register</h3>
     </div>
     <div class="card-body">
-        <EditForm Model="@registerModel" OnValidSubmit="HandleRegistration">
+        <EditForm Model="@registerModel" OnValidSubmit="HandleRegistration" FormName="registerForm">
+            @* <--- ADD FormName="registerForm" *@
             <DataAnnotationsValidator />
             <ValidationSummary />
 
@@ -53,6 +54,12 @@
                     @errorMessage
                 </div>
             }
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success" role="alert">
+                    @successMessage
+                </div>
+            }
 
             <button type="submit" class="btn btn-primary w-100">Register</button>
         </EditForm>
@@ -65,10 +72,13 @@
 @code {
     private RegisterModel registerModel = new();
     private string? errorMessage;
+    private string? successMessage;
 
     private async Task HandleRegistration()
     {
         errorMessage = null;
+        successMessage = null;
+
         if (registerModel.Password != registerModel.ConfirmPassword)
         {
             errorMessage = "Passwords do not match.";
@@ -79,7 +89,8 @@
 
         if (result.Succeeded)
         {
-            Navigation.NavigateTo("/", forceLoad: true);
+            successMessage = "Registration completed successfully! You can now log in.";
+            registerModel = new RegisterModel();
         }
         else
         {

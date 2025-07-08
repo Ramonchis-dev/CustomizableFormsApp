@@ -24,7 +24,8 @@ else
 {
     <h2 class="text-2xl font-semibold mb-4">@(TemplateId == Guid.Empty ? "Create New Template" : $"Edit Template: {template?.Title}")</h2>
 
-    <EditForm Model="@template" OnValidSubmit="HandleValidSubmit">
+    <EditForm Model="@template" OnValidSubmit="HandleValidSubmit" FormName="templateEditForm">
+        @* <--- ADD FormName="templateEditForm" *@
         <DataAnnotationsValidator />
         <ValidationSummary />
 
@@ -112,7 +113,7 @@ else
 
 @code {
     [Parameter]
-    public Guid TemplateId { get; set; } = Guid.Empty; // Default to Empty for creation
+    public Guid TemplateId { get; set; } = Guid.Empty;
 
     private Template? template;
     private string? currentUserId;
@@ -124,7 +125,6 @@ else
 
         if (TemplateId != Guid.Empty)
         {
-            // Editing existing template
             template = await TemplateService.GetTemplateByIdAsync(TemplateId);
 
             if (template == null)
@@ -136,12 +136,11 @@ else
             var authorizationResult = await AuthorizationService.AuthorizeAsync(authState.User, template, Operations.Update);
             if (!authorizationResult.Succeeded)
             {
-                Navigation.NavigateTo("/accessdenied"); // Or handle unauthorized access
+                Navigation.NavigateTo("/accessdenied");
             }
         }
         else
         {
-            // Creating new template
             template = new Template
             {
                 Title = "New Template",
@@ -216,7 +215,7 @@ else
     {
         if (template != null)
         {
-            if (TemplateId == Guid.Empty) // Creating new
+            if (TemplateId == Guid.Empty)
             {
                 if (string.IsNullOrEmpty(template.AuthorId) && currentUserId != null)
                 {
@@ -224,7 +223,7 @@ else
                 }
                 await TemplateService.CreateTemplateAsync(template);
             }
-            else // Updating existing
+            else
             {
                 await TemplateService.UpdateTemplateAsync(template);
             }

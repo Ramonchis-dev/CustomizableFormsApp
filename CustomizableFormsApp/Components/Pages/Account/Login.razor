@@ -10,13 +10,13 @@
 
 <PageTitle>Log In</PageTitle>
 
-
 <div class="card mx-auto mt-5" style="max-width: 400px;">
     <div class="card-header text-center">
         <h3 class="mb-0">Log In</h3>
     </div>
     <div class="card-body">
-        <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+        <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
+            @* <--- ADD FormName="loginForm" *@
             <DataAnnotationsValidator />
             <ValidationSummary />
 
@@ -59,7 +59,6 @@
     private async Task HandleLogin()
     {
         errorMessage = null;
-        // Add a console log here to confirm method is hit
         Console.WriteLine("Attempting login...");
 
         var result = await AuthService.PasswordSignInAsync(loginModel.Email, loginModel.Password, loginModel.RememberMe);
@@ -67,7 +66,7 @@
         if (result.Succeeded)
         {
             Console.WriteLine("Login succeeded!");
-            Navigation.NavigateTo("/", forceLoad: true); // Force full reload to update auth state
+            Navigation.NavigateTo("/", forceLoad: true);
         }
         else if (result.IsLockedOut)
         {
