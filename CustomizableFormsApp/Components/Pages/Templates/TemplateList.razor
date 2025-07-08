@@ -2,11 +2,14 @@
 @using CustomizableFormsApp.Models
 @using CustomizableFormsApp.Services
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Components.Web // Added for MouseEventArgs
-@using System.Linq // Added for Any()
+@using Microsoft.AspNetCore.Components.Web // Ensure this is present
+@using System.Linq
+@using CustomizableFormsApp.Components.Layout
 @inject TemplateService TemplateService
 @inject NavigationManager Navigation
 @inject IAuthorizationService AuthorizationService
+@layout MainLayout
+@rendermode RenderMode.InteractiveServer
 
 <PageTitle>Templates</PageTitle>
 
