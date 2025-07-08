@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
 @inject AuthService AuthService
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Logging out...</PageTitle>
 
