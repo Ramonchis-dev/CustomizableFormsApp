@@ -1,14 +1,47 @@
 /* In CustomizableFormsApp/wwwroot/css/app.css */
 
-/* ... (previous CSS rules) ... */
+/* Overall body background for a darker theme */
+body {
+    background-color: #1a1a1a; /* Very dark gray */
+    color: #e0e0e0; /* Light gray text for general content */
+}
 
+/* Sidebar/Navbar background - make it a darker shade */
+.sidebar {
+    background-image: linear-gradient(180deg, #2c2c2c 0%, #1a1a1a 70%); /* Darker gradient */
+    border-right: 1px solid #333; /* Darker border */
+}
+
+/* Top row (where the brand name and toggler are) */
+.top-row {
+    background-color: #2c2c2c; /* Darker background */
+    border-bottom: 1px solid #333; /* Darker border */
+    justify-content: flex-end;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+}
+
+/* Navbar brand text color */
+.navbar-brand {
+    font-size: 1.1rem;
+    color: #f0f0f0; /* Light color for brand text */
+}
+
+/* Navbar toggler icon color (should already be light with navbar-dark) */
+.navbar-toggler-icon {
+    filter: invert(1) grayscale(100%) brightness(200%); /* Ensures white icon on dark background */
+}
+
+
+/* Navigation links text color */
 .nav-item {
     font-size: 0.9rem;
     padding-bottom: 0.5rem;
 }
 
     .nav-item ::deep a {
-        color: #d7d7d7; /* <--- ENSURE THIS IS A LIGHT COLOR, e.g., #FFFFFF for pure white */
+        color: #e0e0e0; /* Light gray for normal links */
         border-radius: 4px;
         height: 3rem;
         display: flex;
@@ -17,13 +50,86 @@
     }
 
         .nav-item ::deep a.active {
-            background-color: rgba(255,255,255,0.25);
-            color: white; /* Ensure active state is white */
+            background-color: rgba(255,255,255,0.15); /* Slightly lighter active background */
+            color: white; /* White for active link text */
         }
 
         .nav-item ::deep a:hover {
-            background-color: rgba(255,255,255,0.1);
-            color: white; /* Ensure hover state is white */
+            background-color: rgba(255,255,255,0.08); /* Slightly lighter hover background */
+            color: white; /* White for hover link text */
         }
 
-/* ... (rest of the CSS rules) ... */
+/* Main content area card backgrounds (like Login/Register forms) */
+.card {
+    background-color: #2c2c2c; /* Darker card background */
+    color: #e0e0e0; /* Light text on cards */
+    border: 1px solid #444; /* Darker border */
+}
+
+.card-header {
+    background-color: #3a3a3a; /* Even darker header for cards */
+    border-bottom: 1px solid #444;
+    color: #f0f0f0; /* Light text for card headers */
+}
+
+.card-footer {
+    background-color: #3a3a3a; /* Darker footer for cards */
+    border-top: 1px solid #444;
+    color: #e0e0e0; /* Light text for card footers */
+}
+
+/* Form input fields */
+.form-control, .form-input, .form-textarea, .form-select {
+    background-color: #3a3a3a; /* Darker input background */
+    color: #f0f0f0; /* Light text in inputs */
+    border: 1px solid #555; /* Darker input border */
+}
+
+    .form-control:focus, .form-input:focus, .form-textarea:focus, .form-select:focus {
+        background-color: #4a4a4a; /* Slightly lighter on focus */
+        border-color: #666; /* Slightly lighter border on focus */
+        color: #f0f0f0;
+    }
+
+/* Buttons - make them darker */
+.btn-primary {
+    background-color: #0056b3; /* Darker blue */
+    border-color: #004085; /* Even darker border */
+}
+
+    .btn-primary:hover {
+        background-color: #004085; /* Darker on hover */
+        border-color: #002752;
+    }
+
+/* Example for the "View Templates" and "Submit a Form" buttons on Home page */
+/* Assuming "View Templates" is btn-primary and "Submit a Form" is btn-success */
+.btn-success {
+    background-color: #1e7e34; /* Darker green */
+    border-color: #155724;
+}
+
+    .btn-success:hover {
+        background-color: #155724; /* Darker on hover */
+        border-color: #0d3617;
+    }
+
+/* Alert messages (for errors/success) */
+.alert-danger {
+    background-color: #5c1b1b;
+    color: #f8d7da;
+    border-color: #4a1515;
+}
+
+.alert-success {
+    background-color: #1c5c2b;
+    color: #d4edda;
+    border-color: #155724;
+}
+
+/* Validation messages */
+.validation-message {
+    color: #ff6b6b; /* A brighter red for visibility */
+}
+
+/* ... (rest of your existing app.css rules) ... */
