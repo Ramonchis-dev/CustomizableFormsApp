@@ -1,22 +1,23 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
+@rendermode RenderMode.InteractiveServer
 
 <div class="top-row ps-3 navbar navbar-dark">
-    @* navbar-dark should give dark background and light text *@
     <div class="container-fluid">
         <a class="navbar-brand" href="">CustomizableFormsApp</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu"
+                data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                aria-expanded="false" aria-label="Toggle navigation"> @* <--- ENSURE THESE ATTRIBUTES ARE HERE *@
             <span class="navbar-toggler-icon"></span>
         </button>
     </div>
 </div>
 
+@* The 'collapse' class should be present initially to hide the menu when collapsedNavMenu is true *@
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
+    <nav class="flex-column navbar-collapse"> @* <--- ADD navbar-collapse CLASS HERE to the nav container *@
         <div class="nav-item px-3">
-            @* nav-item wraps each link *@
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                @* nav-link styles the actual link *@
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
             </NavLink>
         </div>
