@@ -39,9 +39,7 @@ if (!string.IsNullOrEmpty(envConnectionString))
             var uri = new Uri(envConnectionString);
             var userInfo = uri.UserInfo.Split(':');
 
-            // --- FIX: Handle default port if not specified in URI ---
             var port = uri.Port == -1 ? 5432 : uri.Port; // Use 5432 if port is -1
-            // --- END FIX ---
 
             connectionString =
                 $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.Trim('/')};" +
@@ -152,9 +150,11 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode();
+
 
 
 // Apply migrations and seed initial data on startup
