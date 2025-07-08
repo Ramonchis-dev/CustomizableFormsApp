@@ -1,12 +1,11 @@
 ﻿@page "/account/login"
-@using CustomizableFormsApp.Components.Layout
 @using CustomizableFormsApp.Models
 @using CustomizableFormsApp.Services
 @using System.ComponentModel.DataAnnotations
 @inject AuthService AuthService
 @inject NavigationManager Navigation
 @layout MainLayout
-@rendermode RenderMode.InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Log In</PageTitle>
 
@@ -16,7 +15,6 @@
     </div>
     <div class="card-body">
         <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
-            @* <--- ADD FormName="loginForm" *@
             <DataAnnotationsValidator />
             <ValidationSummary />
 
@@ -66,7 +64,7 @@
         if (result.Succeeded)
         {
             Console.WriteLine("Login succeeded!");
-            Navigation.NavigateTo("/", forceLoad: true);
+            Navigation.NavigateTo("/", forceLoad: true); // Force full reload to update auth state
         }
         else if (result.IsLockedOut)
         {

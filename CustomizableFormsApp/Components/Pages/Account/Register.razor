@@ -4,7 +4,7 @@
 @layout MainLayout
 @inject AuthService AuthService
 @inject NavigationManager Navigation
-@rendermode RenderMode.InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Register</PageTitle>
 
