@@ -1,16 +1,17 @@
+using CustomizableFormsApp.Authorization;
 using CustomizableFormsApp.Components;
 using CustomizableFormsApp.Data;
 using CustomizableFormsApp.Models;
 using CustomizableFormsApp.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Components.Authorization;
-using CustomizableFormsApp.Authorization;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
-using System;
 using Microsoft.Extensions.Logging; // Required for ILogger
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
