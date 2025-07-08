@@ -1,6 +1,9 @@
 ﻿@page "/account/register"
 @using CustomizableFormsApp.Components.Layout
+@using System.ComponentModel.DataAnnotations
 @layout MainLayout
+@inject AuthService AuthService
+@inject NavigationManager Navigation
 @rendermode RenderMode.InteractiveServer
 
 <PageTitle>Register</PageTitle>
@@ -12,7 +15,7 @@
                 <h3>Create a New Account</h3>
             </div>
             <div class="card-body">
-                <EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+                <EditForm Model="@registerModel" OnValidSubmit="HandleRegistration">
                     <DataAnnotationsValidator />
                     <ValidationSummary />
 
@@ -47,28 +50,48 @@
 
 @code {
     private RegisterModel registerModel = new();
-    private string errorMessage;
+    private string? errorMessage;
 
-    private async Task HandleRegister()
+    private async Task HandleRegistration()
     {
         errorMessage = null;
-        // Registration logic would go here
-        // await AuthService.Register(registerModel);
-    }
+        if (registerModel.Password != registerModel.ConfirmPassword)
+        {
+            errorMessage = "Passwords do not match.";
+            return;
+        }
+
+        var result = await AuthService.RegisterUserAsync(registerModel.Email, registerModel.Password, registerModel.FirstName, registerModel.LastName);
+
+        if (result.Succeeded)
+        {
+            Navigation.NavigateTo("/", forceLoad: true); // Redirect to home after successful registration
+        }
+        else
+        {
+            errorMessage = string.Join(" ", result.Errors.Select(e => e.Description));
+        }
     }
 
     public class RegisterModel
     {
         [Required]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required]
         [EmailAddress]
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         [Required]
-        [StringLength(100, MinimumLength = 6)]
-        public string Password { get; set; }
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.")]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = string.Empty;
 
-        [Required]
-        [Compare(nameof(Password), ErrorMessage = "Passwords do not match")]
-        public string ConfirmPassword { get; set; }
+        [DataType(DataType.Password)]
+        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }
