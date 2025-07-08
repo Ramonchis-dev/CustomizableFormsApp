@@ -1,25 +1,28 @@
 ﻿@page "/templates/edit/{TemplateId:guid}"
+@page "/templates/create"
 @using CustomizableFormsApp.Authorization
+@using CustomizableFormsApp.Components.Layout
 @using CustomizableFormsApp.Models
 @using CustomizableFormsApp.Services
-@using System.ComponentModel.DataAnnotations // Added for validation attributes
-@using System.Linq // Added for Max()
-@using System.Security.Claims // Added for ClaimTypes
+@using System.ComponentModel.DataAnnotations
+@using System.Linq
+@using System.Security.Claims
 @inject TemplateService TemplateService
 @inject NavigationManager Navigation
 @inject IAuthorizationService AuthorizationService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@layout MainLayout
 @rendermode RenderMode.InteractiveServer
 
-<PageTitle>Edit Template</PageTitle>
+<PageTitle>@(TemplateId == Guid.Empty ? "Create New Template" : "Edit Template")</PageTitle>
 
-@if (template == null)
+@if (template == null && TemplateId != Guid.Empty)
 {
     <p>Loading template...</p>
 }
 else
 {
-    <h2 class="text-2xl font-semibold mb-4">Edit Template: @template.Title</h2>
+    <h2 class="text-2xl font-semibold mb-4">@(TemplateId == Guid.Empty ? "Create New Template" : $"Edit Template: {template?.Title}")</h2>
 
     <EditForm Model="@template" OnValidSubmit="HandleValidSubmit">
         <DataAnnotationsValidator />
@@ -41,7 +44,6 @@ else
         {
             @for (int i = 0; i < template.Questions.Count; i++)
             {
-                // Convert ICollection to List for direct indexing in a loop
                 var question = template.Questions.ToList()[i];
                 <div class="mb-4 p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
                     <div class="flex justify-between items-center mb-2">
@@ -72,7 +74,6 @@ else
                         <h5 class="text-md font-semibold mt-4 mb-2">Options</h5>
                         @for (int j = 0; j < question.Options.Count; j++)
                         {
-                            // Convert ICollection to List for direct indexing
                             var option = question.Options.ToList()[j];
                             <div class="flex items-center mb-2">
                                 <InputText @bind-Value="option.Text" class="form-input block w-full rounded-md border-gray-300 mr-2" placeholder="Option Text" />
@@ -111,7 +112,7 @@ else
 
 @code {
     [Parameter]
-    public Guid TemplateId { get; set; }
+    public Guid TemplateId { get; set; } = Guid.Empty; // Default to Empty for creation
 
     private Template? template;
     private string? currentUserId;
@@ -121,19 +122,32 @@ else
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        template = await TemplateService.GetTemplateByIdAsync(TemplateId);
-
-        if (template == null)
+        if (TemplateId != Guid.Empty)
         {
-            Navigation.NavigateTo("/templates");
-            return;
+            // Editing existing template
+            template = await TemplateService.GetTemplateByIdAsync(TemplateId);
+
+            if (template == null)
+            {
+                Navigation.NavigateTo("/templates");
+                return;
+            }
+
+            var authorizationResult = await AuthorizationService.AuthorizeAsync(authState.User, template, Operations.Update);
+            if (!authorizationResult.Succeeded)
+            {
+                Navigation.NavigateTo("/accessdenied"); // Or handle unauthorized access
+            }
         }
-
-        // Authorization check (assuming Operations class is defined)
-        var authorizationResult = await AuthorizationService.AuthorizeAsync(authState.User, template, Operations.Update);
-        if (!authorizationResult.Succeeded)
+        else
         {
-            Navigation.NavigateTo("/accessdenied");
+            // Creating new template
+            template = new Template
+            {
+                Title = "New Template",
+                Description = "A description for your new form.",
+                Questions = new List<Question>()
+            };
         }
     }
 
@@ -143,7 +157,7 @@ else
         {
             template.Questions.Add(new Question
             {
-                Id = Guid.NewGuid(), // Ensure new GUID for new questions
+                Id = Guid.NewGuid(),
                 OrderIndex = template.Questions.Any() ? template.Questions.Max(q => q.OrderIndex) + 1 : 1,
                 Type = QuestionType.Text,
                 IsRequired = false,
@@ -173,7 +187,7 @@ else
             {
                 question.Options.Add(new QuestionOption
                 {
-                    Id = Guid.NewGuid(), // Ensure new GUID for new options
+                    Id = Guid.NewGuid(),
                     OrderIndex = question.Options.Any() ? question.Options.Max(o => o.OrderIndex) + 1 : 1,
                     Text = "New Option",
                     Value = Guid.NewGuid().ToString("N").Substring(0, 8)
@@ -202,11 +216,18 @@ else
     {
         if (template != null)
         {
-            if (string.IsNullOrEmpty(template.AuthorId) && currentUserId != null)
+            if (TemplateId == Guid.Empty) // Creating new
             {
-                template.AuthorId = currentUserId;
+                if (string.IsNullOrEmpty(template.AuthorId) && currentUserId != null)
+                {
+                    template.AuthorId = currentUserId;
+                }
+                await TemplateService.CreateTemplateAsync(template);
             }
-            await TemplateService.UpdateTemplateAsync(template);
+            else // Updating existing
+            {
+                await TemplateService.UpdateTemplateAsync(template);
+            }
             Navigation.NavigateTo("/templates");
         }
     }

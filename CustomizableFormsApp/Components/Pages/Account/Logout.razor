@@ -1,0 +1,19 @@
+﻿@page "/account/logout"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthService AuthService
+@rendermode RenderMode.InteractiveServer
+
+<PageTitle>Logging out...</PageTitle>
+
+<div class="text-center mt-10">
+    <p>Logging out...</p>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.SignOutAsync();
+        Navigation.NavigateTo("/", forceLoad: true); // Force a full page reload to clear auth state
+    }
+}
